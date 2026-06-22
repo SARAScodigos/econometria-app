@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.vscode/
+.DS_Store
+.agents
+# Datos temporales de Excel
+~$*.xlsx
+
+# Entornos virtuales
+venv/
+env/
+.env
+
+# No ignoramos outputs/ si se desea hacer commit, pero si se generan
+# automáticamente, quizás sea mejor ignorarlos.
+# outputs/
