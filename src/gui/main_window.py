@@ -8,6 +8,7 @@ from PyQt6.QtCore import Qt
 from src.gui.app_state import AppState
 from src.gui.tabs.data_tab import DataTab
 from src.gui.tabs.seasonality_tab import SeasonalityTab
+from src.gui.tabs.unit_root_tab import UnitRootTab
 
 # ---------------------------------------------------------------------------
 # Stylesheet global
@@ -230,13 +231,11 @@ class MainWindow(QMainWindow):
         self._tabs = QTabWidget()
         self._data_tab = DataTab(self._state)
         self._season_tab = SeasonalityTab(self._state)
+        self._unit_root_tab = UnitRootTab(self._state)
 
         self._tabs.addTab(self._data_tab,   "  Datos  ")
         self._tabs.addTab(self._season_tab, "  Estacionalidad  ")
-        self._tabs.addTab(
-            _PlaceholderTab("Raíz Unitaria — próximamente"),
-            "  Raíz Unitaria  ",
-        )
+        self._tabs.addTab(self._unit_root_tab, "  Raíz Unitaria  ")
         self._tabs.addTab(
             _PlaceholderTab("Transformaciones (log / diferencias) — próximamente"),
             "  Transformaciones  ",

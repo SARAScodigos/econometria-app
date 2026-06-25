@@ -35,6 +35,8 @@ class AppState(QObject):
         self.raw_df: pd.DataFrame | None = None
         self.current_df: pd.DataFrame | None = None
         self.active_cols: list[str] = []
+        self.stationary_cols: list[str] = []
+        self.non_stationary_cols: list[str] = []
         self.variable_registry = pd.DataFrame(columns=_REGISTRY_COLUMNS)
 
     @property
@@ -55,6 +57,8 @@ class AppState(QObject):
         self.date_col = date_col
         self.analysis_cols = list(analysis_cols)
         self.active_cols = list(analysis_cols)
+        self.stationary_cols = []
+        self.non_stationary_cols = []
         self.variable_registry = self._initial_registry(analysis_cols)
         self.data_loaded.emit()
         self.active_data_changed.emit()
@@ -79,6 +83,12 @@ class AppState(QObject):
         self.df = self.current_df
         self.active_cols = self._unique_cols(active_cols)
         self.analysis_cols = list(self.active_cols)
+        self.stationary_cols = [
+            col for col in self.stationary_cols if col in self.active_cols
+        ]
+        self.non_stationary_cols = [
+            col for col in self.non_stationary_cols if col in self.active_cols
+        ]
 
         if registry_rows:
             self._append_registry_rows(registry_rows)
@@ -134,18 +144,28 @@ class AppState(QObject):
             return
 
         registry = self.variable_registry.copy()
+        stationary: list[str] = []
+        non_stationary: list[str] = []
         for _, row in results.iterrows():
             variable = str(row["variable"])
+            state = str(row.get("estacionaria", "pending"))
+            if state == "Sí":
+                stationary.append(variable)
+            elif state in {"No", "Mixta", "Error"}:
+                non_stationary.append(variable)
+
             mask = registry["current_name"] == variable
             if not mask.any():
                 continue
-            registry.loc[mask, "is_stationary"] = row.get("estacionaria", "pending")
+            registry.loc[mask, "is_stationary"] = state
             registry.loc[mask, "status"] = (
                 "active_final"
-                if row.get("estacionaria") == "Sí"
+                if state == "Sí"
                 else "requires_transformation"
             )
         self.variable_registry = registry
+        self.stationary_cols = self._unique_cols(stationary)
+        self.non_stationary_cols = self._unique_cols(non_stationary)
         self.active_data_changed.emit()
 
     def add_transformed_column(
