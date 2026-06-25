@@ -325,6 +325,7 @@ class SeasonalityTab(QWidget):
         self._desa_bar.setVisible(False)
         self._df_sa = df_sa
         self._desa_results.set_data(df_summary)
+        self._state.set_deseasonalized_data(df_sa, df_summary)
         self._export_sa_btn.setEnabled(not df_sa.empty)
 
     def _on_deseason_error(self, msg: str) -> None:

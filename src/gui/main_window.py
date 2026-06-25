@@ -254,6 +254,7 @@ class MainWindow(QMainWindow):
         # Status bar
         self.statusBar().showMessage("Listo  ·  Carga un archivo en la pestaña Datos para comenzar.")
         self._state.data_loaded.connect(self._on_data_loaded)
+        self._state.active_data_changed.connect(self._on_active_data_changed)
 
     def _on_data_loaded(self) -> None:
         n = len(self._state.analysis_cols)
@@ -264,3 +265,8 @@ class MainWindow(QMainWindow):
         self._header_info.setText(f"{n} variables  ·  {rows:,} obs.")
         # Saltar automáticamente a la pestaña de Estacionalidad
         self._tabs.setCurrentIndex(1)
+
+    def _on_active_data_changed(self) -> None:
+        n = len(self._state.active_cols)
+        rows = len(self._state.current_df) if self._state.current_df is not None else 0
+        self._header_info.setText(f"{n} variables activas  ·  {rows:,} obs.")
