@@ -101,6 +101,9 @@ class AppState(QObject):
             {
                 "none": "ninguna",
                 "seasonal_dummy_adjustment": "dummies mensuales",
+                "difference": "primera diferencia",
+                "log": "logaritmo",
+                "log_difference": "diferencia logarítmica",
             }
         ).fillna(control["transformación"])
         control["estado"] = control["estado"].map(
@@ -296,17 +299,15 @@ class AppState(QObject):
         new_col: str,
         values: pd.Series,
         transform: str,
-    ) -> None:
+    ) -> str | None:
         """Add a derived column and mark it as pending validation."""
         current = self.get_working_df()
         if current is None:
-            return
+            return None
 
+        new_col = self.unique_column_name(new_col)
         current[new_col] = values.reset_index(drop=True)
-        active_cols = [
-            new_col if col == source_col else col
-            for col in self.active_cols
-        ]
+        active_cols = list(self.active_cols)
         if new_col not in active_cols:
             active_cols.append(new_col)
 
@@ -326,6 +327,17 @@ class AppState(QObject):
                 }
             ],
         )
+        return new_col
+
+    def unique_column_name(self, preferred: str) -> str:
+        """Return a non-conflicting column name for the active dataset."""
+        if self.current_df is None or preferred not in self.current_df.columns:
+            return preferred
+
+        idx = 2
+        while f"{preferred}_{idx}" in self.current_df.columns:
+            idx += 1
+        return f"{preferred}_{idx}"
 
     def _initial_registry(self, cols: list[str]) -> pd.DataFrame:
         rows = [
