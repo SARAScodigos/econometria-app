@@ -35,8 +35,8 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 BASE_DIR = Path(__file__).resolve().parents[2]
-ARCHIVO_DATOS = BASE_DIR / "data" / "Data estacional.xlsx"
-ARCHIVO_RESULTADOS = BASE_DIR / "outputs" / "resultados_raiz_unitaria.xlsx"
+ARCHIVO_DATOS = BASE_DIR / "data" / "Data estacionaria.xlsx"
+ARCHIVO_RESULTADOS = BASE_DIR / "outputs" / "resultados_raiz_unitaria_test.xlsx"
 ALPHA = 0.05
 
 VARIABLES_NIVELES = [
@@ -242,7 +242,7 @@ def main() -> None:
     archivo_datos = Path(args.input)
     archivo_resultados = Path(args.output)
 
-    datos = pd.read_excel(archivo_datos, sheet_name="Sheet1")
+    datos = pd.read_excel(archivo_datos, sheet_name="Datos_transformados")
     variables = VARIABLES_TRANSFORMADAS if args.solo_transformadas else [
         *VARIABLES_NIVELES,
         *VARIABLES_TRANSFORMADAS,
