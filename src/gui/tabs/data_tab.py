@@ -6,7 +6,7 @@ import pandas as pd
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QComboBox,
     QGroupBox, QFileDialog, QTableWidget, QTableWidgetItem, QHeaderView,
-    QMessageBox, QCheckBox,
+    QMessageBox, QCheckBox, QSplitter,
 )
 from PyQt6.QtCore import Qt
 
@@ -57,7 +57,9 @@ class DataTab(QWidget):
         sheet_row.addWidget(self._sheet_combo)
         sheet_row.addStretch()
         fl.addLayout(sheet_row)
-        root.addWidget(file_group)
+        root.addWidget(file_group, 0)
+
+        content_split = QSplitter(Qt.Orientation.Vertical)
 
         # 2. Configurar columnas
         col_group = QGroupBox("Configurar Columnas")
@@ -82,21 +84,23 @@ class DataTab(QWidget):
         self._col_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         self._col_table.verticalHeader().setVisible(False)
         self._col_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self._col_table.setMinimumHeight(220)
+        self._col_table.setMinimumHeight(260)
         right.addWidget(self._col_table)
         col_layout.addLayout(right, 1)
-        root.addWidget(col_group)
+        content_split.addWidget(col_group)
 
         # 3. Vista previa
-        preview_group = QGroupBox("Vista previa (primeras 5 filas)")
+        preview_group = QGroupBox("Vista previa (primeras 50 filas)")
         prev_layout = QVBoxLayout(preview_group)
         self._preview = QTableWidget()
         self._preview.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._preview.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         self._preview.verticalHeader().setVisible(False)
-        self._preview.setMaximumHeight(160)
+        self._preview.setMinimumHeight(260)
         prev_layout.addWidget(self._preview)
-        root.addWidget(preview_group)
+        content_split.addWidget(preview_group)
+        content_split.setSizes([360, 420])
+        root.addWidget(content_split, 1)
 
         # 4. Confirmar
         confirm_row = QHBoxLayout()
@@ -210,6 +214,7 @@ class DataTab(QWidget):
         if not self._state.is_loaded:
             return
 
+        scroll_value = self._col_table.verticalScrollBar().value()
         self._syncing_control = True
         self._checkboxes = []
         control = self._state.variable_control_df()
@@ -246,6 +251,7 @@ class DataTab(QWidget):
             QHeaderView.ResizeMode.ResizeToContents
         )
         self._col_table.horizontalHeader().setStretchLastSection(True)
+        self._col_table.verticalScrollBar().setValue(scroll_value)
         self._syncing_control = False
 
     def _on_active_checkbox_changed(self) -> None:
@@ -261,7 +267,7 @@ class DataTab(QWidget):
         self._info_label.setText(f"{len(selected)} variables activas")
 
     def _populate_preview(self, df: pd.DataFrame) -> None:
-        head = df.head(5)
+        head = df.head(50)
         self._preview.setRowCount(len(head))
         self._preview.setColumnCount(len(head.columns))
         self._preview.setHorizontalHeaderLabels(list(head.columns))

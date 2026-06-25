@@ -139,7 +139,10 @@ QListWidget {
     alternate-background-color: #F3F6F8;
 }
 QListWidget::item       { padding: 4px 6px; }
-QListWidget::item:hover { background: #E6F0F3; }
+QListWidget::item:hover { background: transparent; color: #1F2933; }
+QListWidget::item:selected { background: #D6E8ED; color: #1F2933; }
+QListWidget::item:selected:active { background: #C6DDE4; color: #1F2933; }
+QListWidget::item:selected:!active { background: #D6E8ED; color: #1F2933; }
 
 /* ── ComboBox ─────────────────────────────────────────── */
 QComboBox {

@@ -10,7 +10,6 @@ from PyQt6.QtWidgets import (
     QLabel,
     QMessageBox,
     QPushButton,
-    QSplitter,
     QVBoxLayout,
     QWidget,
 )
@@ -21,6 +20,7 @@ from src.gui.widgets.results_table import ResultsTable
 
 
 _TRANSFORMS = {
+    "Sugerida automática": "auto",
     "Primera diferencia": "difference",
     "Logaritmo": "log",
     "Diferencia logarítmica": "log_difference",
@@ -57,44 +57,36 @@ class TransformationsTab(QWidget):
 
         box = QGroupBox("Crear variables transformadas")
         box_l = QVBoxLayout(box)
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-
-        left = QWidget()
-        left_l = QVBoxLayout(left)
-        left_l.setContentsMargins(0, 0, 4, 0)
 
         mode_row = QHBoxLayout()
         mode_row.addWidget(QLabel("Transformación:"))
         self._mode_combo = QComboBox()
         self._mode_combo.addItems(list(_TRANSFORMS))
         mode_row.addWidget(self._mode_combo)
-        mode_row.addStretch()
-        left_l.addLayout(mode_row)
-
-        self._cols = ColumnSelector("Variables activas a transformar:", min_height=220)
-        left_l.addWidget(self._cols)
 
         self._run_btn = QPushButton("Crear transformación")
         self._run_btn.setObjectName("primaryBtn")
         self._run_btn.setEnabled(False)
         self._run_btn.clicked.connect(self._run_transform)
-        left_l.addWidget(self._run_btn)
+        mode_row.addWidget(self._run_btn)
+        mode_row.addStretch()
+        box_l.addLayout(mode_row)
+
+        self._cols = ColumnSelector("Variables activas a transformar:", min_height=130)
+        self._cols.setMaximumHeight(190)
+        box_l.addWidget(self._cols)
 
         note = QLabel(
+            "Se transforman las variables seleccionadas de la lista. "
             "Las nuevas columnas se agregan al panel de Datos y quedan activas. "
             "Puedes apagarlas allí antes de correr nuevas pruebas."
         )
         note.setObjectName("noteLabel")
         note.setWordWrap(True)
-        left_l.addWidget(note)
-        left_l.addStretch()
-
-        splitter.addWidget(left)
+        box_l.addWidget(note)
 
         self._results = ResultsTable("Resumen de transformaciones")
-        splitter.addWidget(self._results)
-        splitter.setSizes([280, 720])
-        box_l.addWidget(splitter)
+        box_l.addWidget(self._results)
         root.addWidget(box)
 
     def _on_active_data_changed(self) -> None:
@@ -129,18 +121,23 @@ class TransformationsTab(QWidget):
 
         for variable in variables:
             try:
-                series, new_name = self._build_series(df, variable, transform)
+                applied_transform = (
+                    self._suggest_transform(variable)
+                    if transform == "auto"
+                    else transform
+                )
+                series, new_name = self._build_series(df, variable, applied_transform)
                 final_name = self._state.add_transformed_column(
                     source_col=variable,
                     new_col=new_name,
                     values=series,
-                    transform=transform,
+                    transform=applied_transform,
                 )
                 rows.append(
                     {
                         "variable_original": variable,
                         "variable_creada": final_name or new_name,
-                        "transformacion": self._mode_combo.currentText(),
+                        "transformacion": self._transform_label(applied_transform),
                         "observaciones_validas": int(series.dropna().shape[0]),
                         "estado": "Creada",
                         "detalle": "Pendiente de validar con ADF/KPSS",
@@ -188,3 +185,13 @@ class TransformationsTab(QWidget):
             return logged.diff(), f"D_ln_{variable}"
 
         raise ValueError(f"Transformación no reconocida: {transform}")
+
+    def _suggest_transform(self, variable: str) -> str:
+        normalized = variable.lower()
+        if normalized.startswith(("vol_", "vol")) or "pbi" in normalized:
+            return "log_difference"
+        return "difference"
+
+    def _transform_label(self, transform: str) -> str:
+        labels = {value: key for key, value in _TRANSFORMS.items()}
+        return labels.get(transform, transform)
