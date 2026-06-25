@@ -266,6 +266,9 @@ class MainWindow(QMainWindow):
         self._tabs.setCurrentIndex(1)
 
     def _on_active_data_changed(self) -> None:
-        n = len(self._state.active_cols)
+        active = len(self._state.active_cols)
+        available = len(self._state.available_analysis_cols())
         rows = len(self._state.current_df) if self._state.current_df is not None else 0
-        self._header_info.setText(f"{n} variables activas  ·  {rows:,} obs.")
+        self._header_info.setText(
+            f"{active} activas / {available} disponibles  ·  {rows:,} obs."
+        )

@@ -123,6 +123,7 @@ class SeasonalityTab(QWidget):
         self._df_sa: pd.DataFrame | None = None
         self._build()
         state.data_loaded.connect(self._on_data_loaded)
+        state.active_data_changed.connect(self._on_data_loaded)
 
     # ------------------------------------------------------------------
     # UI
@@ -236,7 +237,7 @@ class SeasonalityTab(QWidget):
         state = self._state
         fname = Path(state.file_path).name if state.file_path else "datos"
         n_rows = len(state.df) if state.df is not None else 0
-        n_cols = len(state.analysis_cols)
+        n_cols = len(state.active_cols)
 
         self._status_lbl.setText(
             f"Archivo: {fname}  ·  {n_rows:,} filas  ·  {n_cols} variables"
@@ -246,10 +247,10 @@ class SeasonalityTab(QWidget):
             "border:1px solid #A9C8B9; border-radius:4px; font-size:12px; font-weight:bold;"
         )
 
-        cols = state.analysis_cols
+        cols = state.active_cols
         self._test_cols.set_columns(cols)
         self._desa_cols.set_columns(cols, checked=[])   # vacío hasta correr el test
-        self._run_test_btn.setEnabled(True)
+        self._run_test_btn.setEnabled(bool(cols))
 
     # ------------------------------------------------------------------
     # Prueba F
@@ -284,6 +285,7 @@ class SeasonalityTab(QWidget):
                 df[col] = df[col].map(lambda x: f"{x:.4f}" if pd.notna(x) else "—")
 
         self._test_results.set_data(df, color_col="es_estacional", color_map=_COLOR_MAP)
+        self._state.register_seasonality_results(df)
 
         # Pre-seleccionar variables estacionales en la sección 2
         seasonal = [r["variable"] for r in results if r.get("es_estacional") == "Sí"]

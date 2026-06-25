@@ -43,6 +43,89 @@ class AppState(QObject):
     def is_loaded(self) -> bool:
         return self.current_df is not None
 
+    def available_analysis_cols(self) -> list[str]:
+        """All non-date columns currently available in memory."""
+        if self.current_df is None:
+            return []
+
+        date_names = {"fecha"}
+        if self.date_col:
+            date_names.add(self.date_col)
+
+        return [
+            col
+            for col in self.current_df.columns
+            if col not in date_names
+        ]
+
+    def variable_control_df(self) -> pd.DataFrame:
+        """Human-readable registry for the GUI variable control tables."""
+        if self.variable_registry.empty:
+            return pd.DataFrame(
+                columns=[
+                    "base",
+                    "variable",
+                    "origen",
+                    "etapa",
+                    "transformación",
+                    "estacionalidad",
+                    "estacionariedad",
+                    "estado",
+                    "activa",
+                ]
+            )
+
+        control = self.variable_registry.rename(
+            columns={
+                "base_name": "base",
+                "current_name": "variable",
+                "source_name": "origen",
+                "stage": "etapa",
+                "transform": "transformación",
+                "is_seasonal": "estacionalidad",
+                "is_stationary": "estacionariedad",
+                "status": "estado",
+            }
+        ).copy()
+        control["activa"] = control["variable"].map(
+            lambda col: "Sí" if col in self.active_cols else "No"
+        )
+        control["etapa"] = control["etapa"].map(
+            {
+                "original": "original",
+                "seasonal_adjusted": "desestacionalizada",
+                "transformed": "transformada",
+            }
+        ).fillna(control["etapa"])
+        control["transformación"] = control["transformación"].map(
+            {
+                "none": "ninguna",
+                "seasonal_dummy_adjustment": "dummies mensuales",
+            }
+        ).fillna(control["transformación"])
+        control["estado"] = control["estado"].map(
+            {
+                "loaded": "cargada",
+                "requires_deseasonalization": "requiere desestacionalizar",
+                "pending_unit_root_test": "pendiente ADF/KPSS",
+                "active_final": "final activa",
+                "requires_transformation": "requiere transformación",
+            }
+        ).fillna(control["estado"])
+        return control[
+            [
+                "base",
+                "variable",
+                "origen",
+                "etapa",
+                "transformación",
+                "estacionalidad",
+                "estacionariedad",
+                "estado",
+                "activa",
+            ]
+        ]
+
     def load(
         self,
         df: pd.DataFrame,
@@ -59,8 +142,26 @@ class AppState(QObject):
         self.active_cols = list(analysis_cols)
         self.stationary_cols = []
         self.non_stationary_cols = []
-        self.variable_registry = self._initial_registry(analysis_cols)
+        registry_cols = [
+            col
+            for col in df.columns
+            if col not in {date_col, "fecha"}
+        ]
+        self.variable_registry = self._initial_registry(registry_cols)
         self.data_loaded.emit()
+        self.active_data_changed.emit()
+
+    def set_active_cols(self, cols: list[str]) -> None:
+        """Update the user-controlled variable selection used by analysis tabs."""
+        available = set(self.available_analysis_cols())
+        self.active_cols = self._unique_cols([col for col in cols if col in available])
+        self.analysis_cols = list(self.active_cols)
+        self.stationary_cols = [
+            col for col in self.stationary_cols if col in self.active_cols
+        ]
+        self.non_stationary_cols = [
+            col for col in self.non_stationary_cols if col in self.active_cols
+        ]
         self.active_data_changed.emit()
 
     def get_working_df(self) -> pd.DataFrame | None:
@@ -137,6 +238,27 @@ class AppState(QObject):
         ]
 
         self.set_current_data(current, active_cols, registry_rows)
+
+    def register_seasonality_results(self, results: pd.DataFrame) -> None:
+        """Store monthly seasonality status for the original/current variables."""
+        if results.empty or "variable" not in results.columns:
+            return
+
+        registry = self.variable_registry.copy()
+        for _, row in results.iterrows():
+            variable = str(row["variable"])
+            state = str(row.get("es_estacional", "pending"))
+            mask = registry["current_name"] == variable
+            if not mask.any():
+                continue
+            registry.loc[mask, "is_seasonal"] = state
+            registry.loc[mask, "status"] = (
+                "requires_deseasonalization"
+                if state == "Sí"
+                else "pending_unit_root_test"
+            )
+        self.variable_registry = registry
+        self.active_data_changed.emit()
 
     def register_stationarity_results(self, results: pd.DataFrame) -> None:
         """Store ADF/KPSS status in the variable registry when that tab exists."""

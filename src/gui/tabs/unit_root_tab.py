@@ -58,7 +58,6 @@ class UnitRootTab(QWidget):
         self._summary_df: pd.DataFrame | None = None
         self._detail_df: pd.DataFrame | None = None
         self._build()
-        state.data_loaded.connect(self._on_active_data_changed)
         state.active_data_changed.connect(self._on_active_data_changed)
 
     def _build(self) -> None:
@@ -67,7 +66,7 @@ class UnitRootTab(QWidget):
         root.setContentsMargins(16, 16, 16, 16)
 
         self._status_lbl = QLabel(
-            "Carga datos y define variables activas para ejecutar ADF/KPSS."
+            "Activa variables en la pestaña Datos para ejecutar ADF/KPSS."
         )
         self._status_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._status_lbl.setStyleSheet(
@@ -137,7 +136,7 @@ class UnitRootTab(QWidget):
         fname = Path(self._state.file_path).name if self._state.file_path else "datos"
         n_rows = len(self._state.current_df) if self._state.current_df is not None else 0
         self._status_lbl.setText(
-            f"Dataset activo: {fname}  ·  {n_rows:,} filas  ·  {len(cols)} variables"
+            f"Dataset activo: {fname}  ·  {n_rows:,} filas  ·  {len(cols)} variables activas"
         )
         self._status_lbl.setStyleSheet(
             "color:#1F5F74; padding:6px 12px; background:#EAF3F5;"
