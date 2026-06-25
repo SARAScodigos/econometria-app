@@ -30,7 +30,7 @@ if str(_ROOT) not in sys.path:
 # Configuración de rutas
 # ---------------------------------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parents[2]
-ARCHIVO_DATOS    = BASE_DIR / "data" / "Data No estacionaria.xlsx"
+ARCHIVO_DATOS    = BASE_DIR / "data" / "Data No estacional.xlsx"
 ARCHIVO_SALIDA   = BASE_DIR / "outputs" / "datos_desestacionalizados.xlsx"
 ALPHA = 0.05
 

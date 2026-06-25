@@ -16,8 +16,8 @@ import statsmodels.api as sm
 
 
 BASE_DIR = Path(__file__).parent.parent.parent
-ARCHIVO_DATOS = BASE_DIR / "data" / "Data No estacionaria.xlsx"
-ARCHIVO_RESULTADOS = BASE_DIR / "outputs" / "resultados_estacionalidad.xlsx"
+ARCHIVO_DATOS = BASE_DIR / "data" / "Data estacional.xlsx"
+ARCHIVO_RESULTADOS = BASE_DIR / "outputs" / "resultados_estacionalidad_comprobacion.xlsx"
 ALPHA = 0.05
 
 VARIABLES = [

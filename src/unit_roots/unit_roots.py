@@ -35,8 +35,8 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 BASE_DIR = Path(__file__).resolve().parents[2]
-ARCHIVO_DATOS = BASE_DIR / "data" / "datos_estacionarios.xlsx"
-ARCHIVO_RESULTADOS = BASE_DIR / "outputs" / "resultados_raiz_unitaria_de_datos_transformados.xlsx"
+ARCHIVO_DATOS = BASE_DIR / "data" / "Data estacionaria.xlsx"
+ARCHIVO_RESULTADOS = BASE_DIR / "outputs" / "resultados_raiz_unitaria_test.xlsx"
 ALPHA = 0.05
 
 VARIABLES_NIVELES = [
