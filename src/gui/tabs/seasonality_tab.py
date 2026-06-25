@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import pandas as pd
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QGroupBox,
@@ -14,9 +12,9 @@ from src.gui.widgets.results_table import ResultsTable
 from src.gui.widgets.column_selector import ColumnSelector
 
 _COLOR_MAP = {
-    "Sí":    "#FEF3C7",   # ámbar claro  → estacional
-    "No":    "#DCFCE7",   # verde claro  → no estacional
-    "Error": "#FEE2E2",   # rojo claro   → error
+    "Sí":    "#F1E5C6",   # alerta suave: estacional
+    "No":    "#DCEADF",   # validación suave: no estacional
+    "Error": "#F2D6D2",   # error suave
 }
 
 
@@ -123,6 +121,7 @@ class SeasonalityTab(QWidget):
         self._df_sa: pd.DataFrame | None = None
         self._build()
         state.data_loaded.connect(self._on_data_loaded)
+        state.active_data_changed.connect(self._on_data_loaded)
 
     # ------------------------------------------------------------------
     # UI
@@ -133,16 +132,7 @@ class SeasonalityTab(QWidget):
         root.setSpacing(12)
         root.setContentsMargins(16, 16, 16, 16)
 
-        # Status bar
-        self._status_lbl = QLabel(
-            "Carga un archivo en la pestaña Datos para continuar."
-        )
-        self._status_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._status_lbl.setStyleSheet(
-            "color:#64748B; padding:6px 12px; background:#F8FAFC;"
-            "border:1px solid #E2E8F0; border-radius:4px; font-size:12px;"
-        )
-        root.addWidget(self._status_lbl)
+        main_split = QSplitter(Qt.Orientation.Vertical)
 
         # ── Sección 1: Prueba F ──────────────────────────────────────────
         test_box = QGroupBox("1. Prueba F de Estacionalidad  (dummies mensuales)")
@@ -177,7 +167,7 @@ class SeasonalityTab(QWidget):
         test_split.setSizes([260, 700])
 
         test_root.addWidget(test_split)
-        root.addWidget(test_box)
+        main_split.addWidget(test_box)
 
         # ── Sección 2: Desestacionalización ─────────────────────────────
         desa_box = QGroupBox("2. Desestacionalización")
@@ -226,7 +216,9 @@ class SeasonalityTab(QWidget):
         desa_split.setSizes([260, 700])
 
         desa_root.addWidget(desa_split)
-        root.addWidget(desa_box)
+        main_split.addWidget(desa_box)
+        main_split.setSizes([1, 1])
+        root.addWidget(main_split)
 
     # ------------------------------------------------------------------
     # State change
@@ -234,22 +226,10 @@ class SeasonalityTab(QWidget):
 
     def _on_data_loaded(self) -> None:
         state = self._state
-        fname = Path(state.file_path).name if state.file_path else "datos"
-        n_rows = len(state.df) if state.df is not None else 0
-        n_cols = len(state.analysis_cols)
-
-        self._status_lbl.setText(
-            f"Archivo: {fname}  ·  {n_rows:,} filas  ·  {n_cols} variables"
-        )
-        self._status_lbl.setStyleSheet(
-            "color:#15803D; padding:6px 12px; background:#F0FDF4;"
-            "border:1px solid #86EFAC; border-radius:4px; font-size:12px; font-weight:bold;"
-        )
-
-        cols = state.analysis_cols
+        cols = state.active_cols
         self._test_cols.set_columns(cols)
         self._desa_cols.set_columns(cols, checked=[])   # vacío hasta correr el test
-        self._run_test_btn.setEnabled(True)
+        self._run_test_btn.setEnabled(bool(cols))
 
     # ------------------------------------------------------------------
     # Prueba F
@@ -284,10 +264,11 @@ class SeasonalityTab(QWidget):
                 df[col] = df[col].map(lambda x: f"{x:.4f}" if pd.notna(x) else "—")
 
         self._test_results.set_data(df, color_col="es_estacional", color_map=_COLOR_MAP)
+        self._state.register_seasonality_results(df)
 
         # Pre-seleccionar variables estacionales en la sección 2
         seasonal = [r["variable"] for r in results if r.get("es_estacional") == "Sí"]
-        all_vars = self._test_cols.get_selected()
+        all_vars = [r["variable"] for r in results]
         self._desa_cols.set_columns(all_vars, checked=seasonal)
         self._run_desa_btn.setEnabled(True)
 
@@ -325,6 +306,7 @@ class SeasonalityTab(QWidget):
         self._desa_bar.setVisible(False)
         self._df_sa = df_sa
         self._desa_results.set_data(df_summary)
+        self._state.set_deseasonalized_data(df_sa, df_summary)
         self._export_sa_btn.setEnabled(not df_sa.empty)
 
     def _on_deseason_error(self, msg: str) -> None:

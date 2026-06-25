@@ -4,11 +4,11 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem,
     QPushButton, QLabel,
 )
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import pyqtSignal
 
 
 class ColumnSelector(QWidget):
-    """Lista de columnas con checkboxes y botones de selección masiva."""
+    """Lista de columnas con seleccion multiple tipo explorador de archivos."""
 
     selection_changed = pyqtSignal(list)
 
@@ -33,7 +33,8 @@ class ColumnSelector(QWidget):
         self._list = QListWidget()
         self._list.setMinimumHeight(min_height)
         self._list.setAlternatingRowColors(True)
-        self._list.itemChanged.connect(self._on_changed)
+        self._list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
+        self._list.itemSelectionChanged.connect(self._on_changed)
         layout.addWidget(self._list)
 
         row = QHBoxLayout()
@@ -50,27 +51,18 @@ class ColumnSelector(QWidget):
         cols: list[str],
         checked: list[str] | None = None,
     ) -> None:
-        """Popula la lista. Si checked=None todos quedan marcados."""
+        """Popula la lista. Si checked=None todos quedan seleccionados."""
         self._list.blockSignals(True)
         self._list.clear()
         for col in cols:
             item = QListWidgetItem(col)
-            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-            state = (
-                Qt.CheckState.Checked
-                if (checked is None or col in checked)
-                else Qt.CheckState.Unchecked
-            )
-            item.setCheckState(state)
             self._list.addItem(item)
+            item.setSelected(checked is None or col in checked)
         self._list.blockSignals(False)
+        self.selection_changed.emit(self.get_selected())
 
     def get_selected(self) -> list[str]:
-        return [
-            self._list.item(i).text()
-            for i in range(self._list.count())
-            if self._list.item(i).checkState() == Qt.CheckState.Checked
-        ]
+        return [item.text() for item in self._list.selectedItems()]
 
     def set_label(self, text: str) -> None:
         self._label.setText(text)
@@ -80,14 +72,14 @@ class ColumnSelector(QWidget):
         self.selection_changed.emit(self.get_selected())
 
     def _select_all(self) -> None:
-        self._set_all(Qt.CheckState.Checked)
+        self._set_all(True)
 
     def _select_none(self) -> None:
-        self._set_all(Qt.CheckState.Unchecked)
+        self._set_all(False)
 
-    def _set_all(self, state: Qt.CheckState) -> None:
+    def _set_all(self, selected: bool) -> None:
         self._list.blockSignals(True)
         for i in range(self._list.count()):
-            self._list.item(i).setCheckState(state)
+            self._list.item(i).setSelected(selected)
         self._list.blockSignals(False)
         self.selection_changed.emit(self.get_selected())

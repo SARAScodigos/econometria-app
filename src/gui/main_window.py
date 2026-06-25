@@ -8,6 +8,8 @@ from PyQt6.QtCore import Qt
 from src.gui.app_state import AppState
 from src.gui.tabs.data_tab import DataTab
 from src.gui.tabs.seasonality_tab import SeasonalityTab
+from src.gui.tabs.transformations_tab import TransformationsTab
+from src.gui.tabs.unit_root_tab import UnitRootTab
 
 # ---------------------------------------------------------------------------
 # Stylesheet global
@@ -15,161 +17,164 @@ from src.gui.tabs.seasonality_tab import SeasonalityTab
 
 _STYLE = """
 QMainWindow, QDialog {
-    background-color: #F1F5F9;
+    background-color: #EEF2F5;
 }
 QWidget {
     font-family: 'Segoe UI', Arial, sans-serif;
     font-size: 13px;
-    color: #1E293B;
+    color: #1F2933;
 }
 
 /* ── Tabs ─────────────────────────────────────────────── */
 QTabWidget::pane {
-    border: 1px solid #E2E8F0;
-    background: #FFFFFF;
+    border: 1px solid #D7DEE6;
+    background: #FAFBFC;
     border-top: none;
 }
 QTabBar::tab {
-    background: #F1F5F9;
-    border: 1px solid #E2E8F0;
+    background: #E9EEF3;
+    border: 1px solid #D7DEE6;
     border-bottom: none;
     padding: 9px 22px;
     min-width: 130px;
-    color: #64748B;
+    color: #5B6673;
 }
 QTabBar::tab:selected {
-    background: #FFFFFF;
-    color: #2563EB;
-    border-top: 2px solid #2563EB;
+    background: #FAFBFC;
+    color: #1F5F74;
+    border-top: 2px solid #2A7F8F;
     font-weight: bold;
 }
 QTabBar::tab:hover:!selected {
-    background: #EFF6FF;
-    color: #1D4ED8;
+    background: #DDEAF0;
+    color: #20566B;
 }
 
 /* ── GroupBox ─────────────────────────────────────────── */
 QGroupBox {
-    border: 1px solid #E2E8F0;
+    border: 1px solid #D7DEE6;
     border-radius: 6px;
     margin-top: 14px;
     padding-top: 6px;
-    background: #FFFFFF;
+    background: #FAFBFC;
     font-weight: 600;
-    color: #374151;
+    color: #2D3742;
 }
 QGroupBox::title {
     subcontrol-origin: margin;
     subcontrol-position: top left;
     padding: 2px 8px;
     left: 12px;
-    color: #1E293B;
+    color: #1F2933;
 }
 
 /* ── Buttons ──────────────────────────────────────────── */
 QPushButton#primaryBtn {
-    background-color: #2563EB;
+    background-color: #2A7F8F;
     color: #FFFFFF;
     border: none;
     border-radius: 5px;
     padding: 8px 20px;
     font-weight: bold;
 }
-QPushButton#primaryBtn:hover   { background-color: #1D4ED8; }
-QPushButton#primaryBtn:disabled { background-color: #93C5FD; color: #DBEAFE; }
+QPushButton#primaryBtn:hover   { background-color: #236C7A; }
+QPushButton#primaryBtn:disabled { background-color: #A9C7CE; color: #E8F1F3; }
 
 QPushButton#successBtn {
-    background-color: #16A34A;
+    background-color: #2F7D5C;
     color: #FFFFFF;
     border: none;
     border-radius: 5px;
     padding: 8px 20px;
     font-weight: bold;
 }
-QPushButton#successBtn:hover   { background-color: #15803D; }
-QPushButton#successBtn:disabled { background-color: #86EFAC; color: #DCFCE7; }
+QPushButton#successBtn:hover   { background-color: #286B4F; }
+QPushButton#successBtn:disabled { background-color: #A9C8B9; color: #E7F0EC; }
 
 QPushButton#secondaryBtn {
-    background-color: #FFFFFF;
-    color: #374151;
-    border: 1px solid #D1D5DB;
+    background-color: #FAFBFC;
+    color: #2D3742;
+    border: 1px solid #C8D0D9;
     border-radius: 5px;
     padding: 7px 16px;
 }
-QPushButton#secondaryBtn:hover    { background-color: #F9FAFB; border-color: #9CA3AF; }
-QPushButton#secondaryBtn:disabled { color: #9CA3AF; border-color: #E5E7EB; }
+QPushButton#secondaryBtn:hover    { background-color: #F2F6F8; border-color: #8EA0AD; }
+QPushButton#secondaryBtn:disabled { color: #98A3AD; border-color: #E1E6EB; }
 
 QPushButton#smallBtn {
-    background-color: #F8FAFC;
-    color: #475569;
-    border: 1px solid #E2E8F0;
+    background-color: #F3F6F8;
+    color: #4C5965;
+    border: 1px solid #D7DEE6;
     border-radius: 4px;
     padding: 3px 10px;
     font-size: 11px;
 }
-QPushButton#smallBtn:hover { background-color: #EFF6FF; border-color: #BFDBFE; }
+QPushButton#smallBtn:hover { background-color: #E6F0F3; border-color: #9BB8C1; }
 
 /* ── Tables ───────────────────────────────────────────── */
 QTableWidget {
-    border: 1px solid #E2E8F0;
+    border: 1px solid #D7DEE6;
     border-radius: 4px;
-    gridline-color: #F1F5F9;
-    background: #FFFFFF;
-    alternate-background-color: #F8FAFC;
+    gridline-color: #E9EEF3;
+    background: #FAFBFC;
+    alternate-background-color: #F3F6F8;
 }
 QTableWidget::item          { padding: 4px 8px; }
-QTableWidget::item:selected { background-color: #DBEAFE; color: #1E293B; }
+QTableWidget::item:selected { background-color: #D6E8ED; color: #1F2933; }
 QHeaderView::section {
-    background-color: #F8FAFC;
+    background-color: #E9EEF3;
     border: none;
-    border-bottom: 1px solid #E2E8F0;
-    border-right: 1px solid #F1F5F9;
+    border-bottom: 1px solid #D7DEE6;
+    border-right: 1px solid #DDE4EA;
     padding: 6px 10px;
     font-weight: 600;
-    color: #475569;
+    color: #3E4C59;
 }
 
 /* ── Lists ────────────────────────────────────────────── */
 QListWidget {
-    border: 1px solid #E2E8F0;
+    border: 1px solid #D7DEE6;
     border-radius: 4px;
-    background: #FFFFFF;
-    alternate-background-color: #F8FAFC;
+    background: #FAFBFC;
+    alternate-background-color: #F3F6F8;
 }
 QListWidget::item       { padding: 4px 6px; }
-QListWidget::item:hover { background: #EFF6FF; }
+QListWidget::item:hover { background: transparent; color: #1F2933; }
+QListWidget::item:selected { background: #D6E8ED; color: #1F2933; }
+QListWidget::item:selected:active { background: #C6DDE4; color: #1F2933; }
+QListWidget::item:selected:!active { background: #D6E8ED; color: #1F2933; }
 
 /* ── ComboBox ─────────────────────────────────────────── */
 QComboBox {
-    border: 1px solid #D1D5DB;
+    border: 1px solid #C8D0D9;
     border-radius: 4px;
     padding: 5px 8px;
-    background: #FFFFFF;
+    background: #FAFBFC;
     min-width: 120px;
 }
-QComboBox:hover        { border-color: #9CA3AF; }
+QComboBox:hover        { border-color: #8EA0AD; }
 QComboBox::drop-down   { border: none; width: 22px; }
 
 /* ── ProgressBar ──────────────────────────────────────── */
 QProgressBar {
-    border: 1px solid #E2E8F0;
+    border: 1px solid #D7DEE6;
     border-radius: 3px;
-    background: #F1F5F9;
+    background: #E9EEF3;
     text-align: center;
 }
-QProgressBar::chunk { background-color: #2563EB; border-radius: 2px; }
+QProgressBar::chunk { background-color: #2A7F8F; border-radius: 2px; }
 
 /* ── Splitter ─────────────────────────────────────────── */
-QSplitter::handle         { background: #E2E8F0; }
+QSplitter::handle         { background: #D7DEE6; }
 QSplitter::handle:horizontal { width: 2px; }
 QSplitter::handle:vertical   { height: 2px; }
 
 /* ── Named labels ─────────────────────────────────────── */
-QLabel#tableTitle   { font-size: 14px; font-weight: bold; color: #1E293B; }
-QLabel#filePath     { color: #64748B; font-style: italic; }
-QLabel#infoLabel    { color: #16A34A; font-weight: bold; }
-QLabel#noteLabel    { color: #64748B; font-size: 12px; }
-QLabel#sectionLabel { font-weight: 600; color: #374151; font-size: 12px; }
+QLabel#tableTitle   { font-size: 14px; font-weight: bold; color: #1F2933; }
+QLabel#filePath     { color: #65717D; font-style: italic; }
+QLabel#infoLabel    { color: #2F7D5C; font-weight: bold; }
+QLabel#noteLabel    { color: #65717D; font-size: 12px; }
+QLabel#sectionLabel { font-weight: 600; color: #2D3742; font-size: 12px; }
 """
 
 
@@ -183,7 +188,7 @@ class _PlaceholderTab(QWidget):
         layout = QVBoxLayout(self)
         lbl = QLabel(message)
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl.setStyleSheet("color:#94A3B8; font-size:15px;")
+        lbl.setStyleSheet("color:#8EA0AD; font-size:15px;")
         layout.addWidget(lbl)
 
 
@@ -204,7 +209,7 @@ class MainWindow(QMainWindow):
         # Header
         header = QWidget()
         header.setFixedHeight(54)
-        header.setStyleSheet("background:#1E3A5F;")
+        header.setStyleSheet("background:#213743;")
         hl = QHBoxLayout(header)
         hl.setContentsMargins(20, 0, 20, 0)
 
@@ -215,14 +220,14 @@ class MainWindow(QMainWindow):
         app_lbl = QLabel("EconometriApp")
         app_lbl.setStyleSheet("color:#FFFFFF; font-size:17px; font-weight:bold;")
         sub_lbl = QLabel("Análisis de Series de Tiempo · UDEP")
-        sub_lbl.setStyleSheet("color:#93C5FD; font-size:11px;")
+        sub_lbl.setStyleSheet("color:#9CC7D1; font-size:11px;")
         tl.addWidget(app_lbl)
         tl.addWidget(sub_lbl)
         hl.addWidget(titles)
         hl.addStretch()
 
         self._header_info = QLabel("")
-        self._header_info.setStyleSheet("color:#BAE6FD; font-size:11px;")
+        self._header_info.setStyleSheet("color:#B9DDE4; font-size:11px;")
         self._header_info.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         hl.addWidget(self._header_info)
 
@@ -230,17 +235,13 @@ class MainWindow(QMainWindow):
         self._tabs = QTabWidget()
         self._data_tab = DataTab(self._state)
         self._season_tab = SeasonalityTab(self._state)
+        self._unit_root_tab = UnitRootTab(self._state)
+        self._transformations_tab = TransformationsTab(self._state)
 
         self._tabs.addTab(self._data_tab,   "  Datos  ")
         self._tabs.addTab(self._season_tab, "  Estacionalidad  ")
-        self._tabs.addTab(
-            _PlaceholderTab("Raíz Unitaria — próximamente"),
-            "  Raíz Unitaria  ",
-        )
-        self._tabs.addTab(
-            _PlaceholderTab("Transformaciones (log / diferencias) — próximamente"),
-            "  Transformaciones  ",
-        )
+        self._tabs.addTab(self._unit_root_tab, "  Raíz Unitaria  ")
+        self._tabs.addTab(self._transformations_tab, "  Transformaciones  ")
 
         # Root
         root = QWidget()
@@ -254,6 +255,7 @@ class MainWindow(QMainWindow):
         # Status bar
         self.statusBar().showMessage("Listo  ·  Carga un archivo en la pestaña Datos para comenzar.")
         self._state.data_loaded.connect(self._on_data_loaded)
+        self._state.active_data_changed.connect(self._on_active_data_changed)
 
     def _on_data_loaded(self) -> None:
         n = len(self._state.analysis_cols)
@@ -264,3 +266,11 @@ class MainWindow(QMainWindow):
         self._header_info.setText(f"{n} variables  ·  {rows:,} obs.")
         # Saltar automáticamente a la pestaña de Estacionalidad
         self._tabs.setCurrentIndex(1)
+
+    def _on_active_data_changed(self) -> None:
+        active = len(self._state.active_cols)
+        available = len(self._state.available_analysis_cols())
+        rows = len(self._state.current_df) if self._state.current_df is not None else 0
+        self._header_info.setText(
+            f"{active} activas / {available} disponibles  ·  {rows:,} obs."
+        )

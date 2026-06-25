@@ -6,7 +6,7 @@ import pandas as pd
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QComboBox,
     QGroupBox, QFileDialog, QTableWidget, QTableWidgetItem, QHeaderView,
-    QMessageBox, QCheckBox,
+    QMessageBox, QCheckBox, QSplitter,
 )
 from PyQt6.QtCore import Qt
 
@@ -22,7 +22,9 @@ class DataTab(QWidget):
         self._df: pd.DataFrame | None = None
         self._file_path: str = ""
         self._checkboxes: list[QCheckBox] = []
+        self._syncing_control = False
         self._build()
+        state.active_data_changed.connect(self._populate_active_control)
 
     # ------------------------------------------------------------------
     # UI
@@ -55,7 +57,9 @@ class DataTab(QWidget):
         sheet_row.addWidget(self._sheet_combo)
         sheet_row.addStretch()
         fl.addLayout(sheet_row)
-        root.addWidget(file_group)
+        root.addWidget(file_group, 0)
+
+        content_split = QSplitter(Qt.Orientation.Vertical)
 
         # 2. Configurar columnas
         col_group = QGroupBox("Configurar Columnas")
@@ -71,28 +75,32 @@ class DataTab(QWidget):
         col_layout.addLayout(left)
 
         right = QVBoxLayout()
-        right.addWidget(QLabel("Variables de análisis (marca las que deseas usar):"))
+        right.addWidget(QLabel("Control de variables (marca las que deseas usar en las pruebas):"))
         self._col_table = QTableWidget()
-        self._col_table.setColumnCount(3)
-        self._col_table.setHorizontalHeaderLabels(["Columna", "Tipo detectado", "Incluir"])
+        self._col_table.setColumnCount(6)
+        self._col_table.setHorizontalHeaderLabels(
+            ["Variable", "Etapa / tipo", "Estado", "Estacionalidad", "Estacionariedad", "Activa"]
+        )
         self._col_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         self._col_table.verticalHeader().setVisible(False)
         self._col_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self._col_table.setMaximumHeight(220)
+        self._col_table.setMinimumHeight(260)
         right.addWidget(self._col_table)
         col_layout.addLayout(right, 1)
-        root.addWidget(col_group)
+        content_split.addWidget(col_group)
 
         # 3. Vista previa
-        preview_group = QGroupBox("Vista previa (primeras 5 filas)")
+        preview_group = QGroupBox("Vista previa (primeras 50 filas)")
         prev_layout = QVBoxLayout(preview_group)
         self._preview = QTableWidget()
         self._preview.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._preview.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         self._preview.verticalHeader().setVisible(False)
-        self._preview.setMaximumHeight(160)
+        self._preview.setMinimumHeight(260)
         prev_layout.addWidget(self._preview)
-        root.addWidget(preview_group)
+        content_split.addWidget(preview_group)
+        content_split.setSizes([360, 420])
+        root.addWidget(content_split, 1)
 
         # 4. Confirmar
         confirm_row = QHBoxLayout()
@@ -161,6 +169,7 @@ class DataTab(QWidget):
     # ------------------------------------------------------------------
 
     def _populate_col_table(self, df: pd.DataFrame) -> None:
+        self._syncing_control = True
         self._checkboxes = []
         self._date_combo.blockSignals(True)
         self._date_combo.clear()
@@ -172,6 +181,7 @@ class DataTab(QWidget):
         self._date_combo.setEnabled(True)
         self._date_combo.blockSignals(False)
 
+        self._col_table.clearContents()
         self._col_table.setRowCount(len(df.columns))
         for r, col in enumerate(df.columns):
             dtype = df[col].dtype
@@ -184,6 +194,9 @@ class DataTab(QWidget):
 
             self._col_table.setItem(r, 0, QTableWidgetItem(col))
             self._col_table.setItem(r, 1, QTableWidgetItem(tipo))
+            self._col_table.setItem(r, 2, QTableWidgetItem("pre-carga"))
+            self._col_table.setItem(r, 3, QTableWidgetItem("pendiente"))
+            self._col_table.setItem(r, 4, QTableWidgetItem("pendiente"))
 
             chk = QCheckBox()
             chk.setChecked(include)
@@ -194,10 +207,67 @@ class DataTab(QWidget):
             cell_l.addWidget(chk)
             cell_l.setAlignment(Qt.AlignmentFlag.AlignCenter)
             cell_l.setContentsMargins(0, 0, 0, 0)
-            self._col_table.setCellWidget(r, 2, cell_w)
+            self._col_table.setCellWidget(r, 5, cell_w)
+        self._syncing_control = False
+
+    def _populate_active_control(self) -> None:
+        if not self._state.is_loaded:
+            return
+
+        scroll_value = self._col_table.verticalScrollBar().value()
+        self._syncing_control = True
+        self._checkboxes = []
+        control = self._state.variable_control_df()
+
+        self._col_table.clearContents()
+        self._col_table.setRowCount(len(control))
+        for r, (_, row) in enumerate(control.iterrows()):
+            variable = str(row["variable"])
+            values = [
+                variable,
+                str(row["etapa"]),
+                str(row["estado"]),
+                str(row["estacionalidad"]),
+                str(row["estacionariedad"]),
+            ]
+            for c, value in enumerate(values):
+                item = QTableWidgetItem(value)
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                self._col_table.setItem(r, c, item)
+
+            chk = QCheckBox()
+            chk.setChecked(variable in self._state.active_cols)
+            chk.stateChanged.connect(self._on_active_checkbox_changed)
+            self._checkboxes.append(chk)
+
+            cell_w = QWidget()
+            cell_l = QHBoxLayout(cell_w)
+            cell_l.addWidget(chk)
+            cell_l.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            cell_l.setContentsMargins(0, 0, 0, 0)
+            self._col_table.setCellWidget(r, 5, cell_w)
+
+        self._col_table.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.ResizeToContents
+        )
+        self._col_table.horizontalHeader().setStretchLastSection(True)
+        self._col_table.verticalScrollBar().setValue(scroll_value)
+        self._syncing_control = False
+
+    def _on_active_checkbox_changed(self) -> None:
+        if self._syncing_control or not self._state.is_loaded:
+            return
+
+        selected = [
+            self._col_table.item(r, 0).text()
+            for r, chk in enumerate(self._checkboxes)
+            if chk.isChecked() and self._col_table.item(r, 0) is not None
+        ]
+        self._state.set_active_cols(selected)
+        self._info_label.setText(f"{len(selected)} variables activas")
 
     def _populate_preview(self, df: pd.DataFrame) -> None:
-        head = df.head(5)
+        head = df.head(50)
         self._preview.setRowCount(len(head))
         self._preview.setColumnCount(len(head.columns))
         self._preview.setHorizontalHeaderLabels(list(head.columns))
