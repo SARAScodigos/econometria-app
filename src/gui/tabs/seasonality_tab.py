@@ -14,9 +14,9 @@ from src.gui.widgets.results_table import ResultsTable
 from src.gui.widgets.column_selector import ColumnSelector
 
 _COLOR_MAP = {
-    "Sí":    "#FEF3C7",   # ámbar claro  → estacional
-    "No":    "#DCFCE7",   # verde claro  → no estacional
-    "Error": "#FEE2E2",   # rojo claro   → error
+    "Sí":    "#F1E5C6",   # alerta suave: estacional
+    "No":    "#DCEADF",   # validación suave: no estacional
+    "Error": "#F2D6D2",   # error suave
 }
 
 
@@ -139,8 +139,8 @@ class SeasonalityTab(QWidget):
         )
         self._status_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._status_lbl.setStyleSheet(
-            "color:#64748B; padding:6px 12px; background:#F8FAFC;"
-            "border:1px solid #E2E8F0; border-radius:4px; font-size:12px;"
+            "color:#65717D; padding:6px 12px; background:#F3F6F8;"
+            "border:1px solid #D7DEE6; border-radius:4px; font-size:12px;"
         )
         root.addWidget(self._status_lbl)
 
@@ -242,8 +242,8 @@ class SeasonalityTab(QWidget):
             f"Archivo: {fname}  ·  {n_rows:,} filas  ·  {n_cols} variables"
         )
         self._status_lbl.setStyleSheet(
-            "color:#15803D; padding:6px 12px; background:#F0FDF4;"
-            "border:1px solid #86EFAC; border-radius:4px; font-size:12px; font-weight:bold;"
+            "color:#2F7D5C; padding:6px 12px; background:#EDF6F1;"
+            "border:1px solid #A9C8B9; border-radius:4px; font-size:12px; font-weight:bold;"
         )
 
         cols = state.analysis_cols
