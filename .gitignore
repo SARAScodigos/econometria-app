@@ -11,7 +11,7 @@ __pycache__/
 venv/
 env/
 .env
-
+.venv/
 # No ignoramos outputs/ si se desea hacer commit, pero si se generan
 # automáticamente, quizás sea mejor ignorarlos.
 # outputs/

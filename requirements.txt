@@ -1,0 +1,19 @@
+# Python 3.12
+# Instalar con: pip install -r requirements.txt
+
+# GUI
+PyQt6>=6.6,<7.0
+
+# Data & numerics
+numpy>=1.26,<3.0
+pandas>=2.1,<3.0
+scipy>=1.11,<2.0
+
+# Econometrics
+statsmodels>=0.14,<1.0
+
+# Plotting
+matplotlib>=3.8,<4.0
+
+# Excel support (requerido por pd.read_excel)
+openpyxl>=3.1,<4.0

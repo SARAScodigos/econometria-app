@@ -1,163 +1,266 @@
-import os
-import sys
-import subprocess
+from __future__ import annotations
+
 from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QTextEdit, QLabel, QGroupBox, QScrollArea
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QLabel,
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from PyQt6.QtCore import Qt
 
-class ScriptWorker(QThread):
-    output_signal = pyqtSignal(str)
-    finished_signal = pyqtSignal(int)
+from src.gui.app_state import AppState
+from src.gui.tabs.data_tab import DataTab
+from src.gui.tabs.seasonality_tab import SeasonalityTab
 
-    def __init__(self, script_path, cwd):
+# ---------------------------------------------------------------------------
+# Stylesheet global
+# ---------------------------------------------------------------------------
+
+_STYLE = """
+QMainWindow, QDialog {
+    background-color: #F1F5F9;
+}
+QWidget {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 13px;
+    color: #1E293B;
+}
+
+/* ── Tabs ─────────────────────────────────────────────── */
+QTabWidget::pane {
+    border: 1px solid #E2E8F0;
+    background: #FFFFFF;
+    border-top: none;
+}
+QTabBar::tab {
+    background: #F1F5F9;
+    border: 1px solid #E2E8F0;
+    border-bottom: none;
+    padding: 9px 22px;
+    min-width: 130px;
+    color: #64748B;
+}
+QTabBar::tab:selected {
+    background: #FFFFFF;
+    color: #2563EB;
+    border-top: 2px solid #2563EB;
+    font-weight: bold;
+}
+QTabBar::tab:hover:!selected {
+    background: #EFF6FF;
+    color: #1D4ED8;
+}
+
+/* ── GroupBox ─────────────────────────────────────────── */
+QGroupBox {
+    border: 1px solid #E2E8F0;
+    border-radius: 6px;
+    margin-top: 14px;
+    padding-top: 6px;
+    background: #FFFFFF;
+    font-weight: 600;
+    color: #374151;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 2px 8px;
+    left: 12px;
+    color: #1E293B;
+}
+
+/* ── Buttons ──────────────────────────────────────────── */
+QPushButton#primaryBtn {
+    background-color: #2563EB;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 5px;
+    padding: 8px 20px;
+    font-weight: bold;
+}
+QPushButton#primaryBtn:hover   { background-color: #1D4ED8; }
+QPushButton#primaryBtn:disabled { background-color: #93C5FD; color: #DBEAFE; }
+
+QPushButton#successBtn {
+    background-color: #16A34A;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 5px;
+    padding: 8px 20px;
+    font-weight: bold;
+}
+QPushButton#successBtn:hover   { background-color: #15803D; }
+QPushButton#successBtn:disabled { background-color: #86EFAC; color: #DCFCE7; }
+
+QPushButton#secondaryBtn {
+    background-color: #FFFFFF;
+    color: #374151;
+    border: 1px solid #D1D5DB;
+    border-radius: 5px;
+    padding: 7px 16px;
+}
+QPushButton#secondaryBtn:hover    { background-color: #F9FAFB; border-color: #9CA3AF; }
+QPushButton#secondaryBtn:disabled { color: #9CA3AF; border-color: #E5E7EB; }
+
+QPushButton#smallBtn {
+    background-color: #F8FAFC;
+    color: #475569;
+    border: 1px solid #E2E8F0;
+    border-radius: 4px;
+    padding: 3px 10px;
+    font-size: 11px;
+}
+QPushButton#smallBtn:hover { background-color: #EFF6FF; border-color: #BFDBFE; }
+
+/* ── Tables ───────────────────────────────────────────── */
+QTableWidget {
+    border: 1px solid #E2E8F0;
+    border-radius: 4px;
+    gridline-color: #F1F5F9;
+    background: #FFFFFF;
+    alternate-background-color: #F8FAFC;
+}
+QTableWidget::item          { padding: 4px 8px; }
+QTableWidget::item:selected { background-color: #DBEAFE; color: #1E293B; }
+QHeaderView::section {
+    background-color: #F8FAFC;
+    border: none;
+    border-bottom: 1px solid #E2E8F0;
+    border-right: 1px solid #F1F5F9;
+    padding: 6px 10px;
+    font-weight: 600;
+    color: #475569;
+}
+
+/* ── Lists ────────────────────────────────────────────── */
+QListWidget {
+    border: 1px solid #E2E8F0;
+    border-radius: 4px;
+    background: #FFFFFF;
+    alternate-background-color: #F8FAFC;
+}
+QListWidget::item       { padding: 4px 6px; }
+QListWidget::item:hover { background: #EFF6FF; }
+
+/* ── ComboBox ─────────────────────────────────────────── */
+QComboBox {
+    border: 1px solid #D1D5DB;
+    border-radius: 4px;
+    padding: 5px 8px;
+    background: #FFFFFF;
+    min-width: 120px;
+}
+QComboBox:hover        { border-color: #9CA3AF; }
+QComboBox::drop-down   { border: none; width: 22px; }
+
+/* ── ProgressBar ──────────────────────────────────────── */
+QProgressBar {
+    border: 1px solid #E2E8F0;
+    border-radius: 3px;
+    background: #F1F5F9;
+    text-align: center;
+}
+QProgressBar::chunk { background-color: #2563EB; border-radius: 2px; }
+
+/* ── Splitter ─────────────────────────────────────────── */
+QSplitter::handle         { background: #E2E8F0; }
+QSplitter::handle:horizontal { width: 2px; }
+QSplitter::handle:vertical   { height: 2px; }
+
+/* ── Named labels ─────────────────────────────────────── */
+QLabel#tableTitle   { font-size: 14px; font-weight: bold; color: #1E293B; }
+QLabel#filePath     { color: #64748B; font-style: italic; }
+QLabel#infoLabel    { color: #16A34A; font-weight: bold; }
+QLabel#noteLabel    { color: #64748B; font-size: 12px; }
+QLabel#sectionLabel { font-weight: 600; color: #374151; font-size: 12px; }
+"""
+
+
+# ---------------------------------------------------------------------------
+# Placeholder tab for future stages
+# ---------------------------------------------------------------------------
+
+class _PlaceholderTab(QWidget):
+    def __init__(self, message: str) -> None:
         super().__init__()
-        self.script_path = script_path
-        self.cwd = cwd
+        layout = QVBoxLayout(self)
+        lbl = QLabel(message)
+        lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl.setStyleSheet("color:#94A3B8; font-size:15px;")
+        layout.addWidget(lbl)
 
-    def run(self):
-        self.output_signal.emit(f"--- Ejecutando: {os.path.basename(self.script_path)} ---\n")
-        try:
-            # Run the python script
-            process = subprocess.Popen(
-                [sys.executable, self.script_path],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                cwd=self.cwd
-            )
-            
-            for line in iter(process.stdout.readline, ''):
-                if line:
-                    self.output_signal.emit(line)
-                    
-            process.stdout.close()
-            process.wait()
-            self.output_signal.emit(f"\n--- Finalizado con código: {process.returncode} ---\n\n")
-            self.finished_signal.emit(process.returncode)
-        except Exception as e:
-            self.output_signal.emit(f"Error al ejecutar el script: {str(e)}\n")
-            self.finished_signal.emit(-1)
+
+# ---------------------------------------------------------------------------
+# Main window
+# ---------------------------------------------------------------------------
 
 class MainWindow(QMainWindow):
-    def __init__(self, base_dir):
+    def __init__(self) -> None:
         super().__init__()
-        self.base_dir = base_dir
-        self.setWindowTitle("Aplicación Econométrica UDEP")
-        self.resize(900, 600)
-        self.worker = None
+        self._state = AppState()
+        self.setWindowTitle("EconometriApp — UDEP")
+        self.resize(1200, 780)
+        self.setStyleSheet(_STYLE)
+        self._build()
 
-        self._setup_ui()
+    def _build(self) -> None:
+        # Header
+        header = QWidget()
+        header.setFixedHeight(54)
+        header.setStyleSheet("background:#1E3A5F;")
+        hl = QHBoxLayout(header)
+        hl.setContentsMargins(20, 0, 20, 0)
 
-    def _setup_ui(self):
-        main_widget = QWidget()
-        self.setCentralWidget(main_widget)
-        
-        main_layout = QHBoxLayout(main_widget)
-        
-        # Left panel: Buttons
-        left_panel = QWidget()
-        left_layout = QVBoxLayout(left_panel)
-        left_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        
-        self.buttons = {}
-        
-        # Group 1: Datos y análisis previo
-        group1 = QGroupBox("1. Datos y Análisis Previo")
-        g1_layout = QVBoxLayout()
-        self.add_script_button(g1_layout, "Comprobar Estacionalidad", "seasonality/seasonality.py")
-        self.add_script_button(g1_layout, "Desestacionalizar", "seasonality/deseasonalize.py")
-        self.add_script_button(g1_layout, "Selección de Rezagos", "model/lag_selection.py")
-        group1.setLayout(g1_layout)
-        left_layout.addWidget(group1)
+        titles = QWidget()
+        tl = QVBoxLayout(titles)
+        tl.setContentsMargins(0, 0, 0, 0)
+        tl.setSpacing(1)
+        app_lbl = QLabel("EconometriApp")
+        app_lbl.setStyleSheet("color:#FFFFFF; font-size:17px; font-weight:bold;")
+        sub_lbl = QLabel("Análisis de Series de Tiempo · UDEP")
+        sub_lbl.setStyleSheet("color:#93C5FD; font-size:11px;")
+        tl.addWidget(app_lbl)
+        tl.addWidget(sub_lbl)
+        hl.addWidget(titles)
+        hl.addStretch()
 
-        # Group 2: Estimación del modelo
-        group2 = QGroupBox("2. Estimación del Modelo")
-        g2_layout = QVBoxLayout()
-        self.add_script_button(g2_layout, "Diagnósticos VARX", "diagnostics/diagnostics.py")
-        self.add_script_button(g2_layout, "VARX Pre-COVID", "model/varx_precovid.py")
-        self.add_script_button(g2_layout, "VARX Total", "model/varx.py")
-        self.add_script_button(g2_layout, "Baseline Sin COVID", "scenarios/baseline.py")
-        group2.setLayout(g2_layout)
-        left_layout.addWidget(group2)
+        self._header_info = QLabel("")
+        self._header_info.setStyleSheet("color:#BAE6FD; font-size:11px;")
+        self._header_info.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        hl.addWidget(self._header_info)
 
-        # Group 3: Shocks e IRF
-        group3 = QGroupBox("3. Shocks e IRF")
-        g3_layout = QVBoxLayout()
-        self.add_script_button(g3_layout, "Shock PBI VARX", "shocks/shock_pbi.py")
-        self.add_script_button(g3_layout, "Plot Crédito Bootstrap", "shocks/plot_credit_bootstrap.py")
-        self.add_script_button(g3_layout, "Plot Mora Bootstrap", "shocks/plot_mora_bootstrap.py")
-        group3.setLayout(g3_layout)
-        left_layout.addWidget(group3)
+        # Tabs
+        self._tabs = QTabWidget()
+        self._data_tab = DataTab(self._state)
+        self._season_tab = SeasonalityTab(self._state)
 
-        # Group 4: Escenarios y Contrafactuales
-        group4 = QGroupBox("4. Escenarios y Contrafactuales")
-        g4_layout = QVBoxLayout()
-        self.add_script_button(g4_layout, "Contrafactual COVID", "scenarios/counterfactual_covid.py")
-        self.add_script_button(g4_layout, "Contrafactual Independiente", "scenarios/counterfactual_independent.py")
-        self.add_script_button(g4_layout, "Contrafactual No Independiente", "scenarios/counterfactual_not_independent.py")
-        self.add_script_button(g4_layout, "Escenarios Macro K=2", "scenarios/escenarios_macro.py")
-        group4.setLayout(g4_layout)
-        left_layout.addWidget(group4)
+        self._tabs.addTab(self._data_tab,   "  Datos  ")
+        self._tabs.addTab(self._season_tab, "  Estacionalidad  ")
+        self._tabs.addTab(
+            _PlaceholderTab("Raíz Unitaria — próximamente"),
+            "  Raíz Unitaria  ",
+        )
+        self._tabs.addTab(
+            _PlaceholderTab("Transformaciones (log / diferencias) — próximamente"),
+            "  Transformaciones  ",
+        )
 
-        # Group 5: Gráficos de Escenarios
-        group5 = QGroupBox("5. Gráficos")
-        g5_layout = QVBoxLayout()
-        self.add_script_button(g5_layout, "Plots Variables", "descriptive/plots.py")
-        self.add_script_button(g5_layout, "Plots Escenarios", "scenarios/plots_escenarios.py")
-        self.add_script_button(g5_layout, "Plot Crédito Niveles", "scenarios/plot_credit_levels.py")
-        self.add_script_button(g5_layout, "Plot Mora Niveles", "scenarios/plot_mora_levels.py")
-        group5.setLayout(g5_layout)
-        left_layout.addWidget(group5)
-        
-        scroll_left = QScrollArea()
-        scroll_left.setWidget(left_panel)
-        scroll_left.setWidgetResizable(True)
-        scroll_left.setFixedWidth(350)
-        
-        main_layout.addWidget(scroll_left)
-        
-        # Right panel: Console Output
-        right_panel = QWidget()
-        right_layout = QVBoxLayout(right_panel)
-        
-        right_layout.addWidget(QLabel("Consola de Salida:"))
-        self.console = QTextEdit()
-        self.console.setReadOnly(True)
-        self.console.setStyleSheet("background-color: #1e1e1e; color: #d4d4d4; font-family: monospace;")
-        right_layout.addWidget(self.console)
-        
-        clear_btn = QPushButton("Limpiar Consola")
-        clear_btn.clicked.connect(self.console.clear)
-        right_layout.addWidget(clear_btn)
-        
-        main_layout.addWidget(right_panel)
+        # Root
+        root = QWidget()
+        root_l = QVBoxLayout(root)
+        root_l.setContentsMargins(0, 0, 0, 0)
+        root_l.setSpacing(0)
+        root_l.addWidget(header)
+        root_l.addWidget(self._tabs)
+        self.setCentralWidget(root)
 
-    def add_script_button(self, layout, label_text, script_name):
-        btn = QPushButton(label_text)
-        script_path = os.path.join(self.base_dir, "src", script_name)
-        btn.clicked.connect(lambda checked, s=script_path: self.run_script(s))
-        layout.addWidget(btn)
-        self.buttons[script_name] = btn
+        # Status bar
+        self.statusBar().showMessage("Listo  ·  Carga un archivo en la pestaña Datos para comenzar.")
+        self._state.data_loaded.connect(self._on_data_loaded)
 
-    def run_script(self, script_path):
-        if self.worker is not None and self.worker.isRunning():
-            self.console.append("--- Por favor espera a que termine el script actual ---")
-            return
-
-        if not os.path.exists(script_path):
-            self.console.append(f"Error: No se encontró el script en {script_path}")
-            return
-
-        self.worker = ScriptWorker(script_path, cwd=self.base_dir)
-        self.worker.output_signal.connect(self.append_console)
-        self.worker.finished_signal.connect(self.script_finished)
-        self.worker.start()
-
-    def append_console(self, text):
-        self.console.insertPlainText(text)
-        self.console.verticalScrollBar().setValue(self.console.verticalScrollBar().maximum())
-
-    def script_finished(self, code):
-        pass
+    def _on_data_loaded(self) -> None:
+        n = len(self._state.analysis_cols)
+        rows = len(self._state.df) if self._state.df is not None else 0
+        self.statusBar().showMessage(
+            f"Datos cargados  ·  {n} variables  ·  {rows:,} observaciones"
+        )
+        self._header_info.setText(f"{n} variables  ·  {rows:,} obs.")
+        # Saltar automáticamente a la pestaña de Estacionalidad
+        self._tabs.setCurrentIndex(1)
