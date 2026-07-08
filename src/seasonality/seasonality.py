@@ -8,6 +8,7 @@ Enero es el mes de referencia. La hipótesis nula de la prueba F es que los
 coeficientes de las otras once dummies mensuales son conjuntamente cero.
 """
 
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -15,25 +16,23 @@ import pandas as pd
 import statsmodels.api as sm
 
 
-BASE_DIR = Path(__file__).parent.parent.parent
-ARCHIVO_DATOS = BASE_DIR / "data" / "Data estacional.xlsx"
-ARCHIVO_RESULTADOS = BASE_DIR / "outputs" / "resultados_estacionalidad_comprobacion.xlsx"
+_ROOT = Path(__file__).resolve().parents[2]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from src.config.settings import (
+    DATE_COL,
+    OUT_DIR,
+    SEASONALITY_INPUT_FILE,
+    SEASONALITY_VARIABLES,
+    configure_runtime,
+)
+
+ARCHIVO_DATOS = Path(SEASONALITY_INPUT_FILE)
+ARCHIVO_RESULTADOS = Path(OUT_DIR) / "resultados_estacionalidad.xlsx"
 ALPHA = 0.05
 
-VARIABLES = [
-    "Vol_comerciales",
-    "Mora_comerciales",
-    "Vol_consumo",
-    "Mora_consumo",
-    "Vol_hipotecarios",
-    "Mora_hipotecarios",
-    "Vol_microcreditos",
-    "Mora_microcreditos",
-    "Vol_total",
-    "Mora_total",
-    "Tasa_Ref",
-    "PBI_Desestacionalizado",
-]
+VARIABLES = SEASONALITY_VARIABLES
 
 
 def convertir_fechas(serie: pd.Series) -> pd.Series:
@@ -48,14 +47,14 @@ def probar_estacionalidad(
     datos: pd.DataFrame, variable: str, alpha: float = ALPHA
 ) -> dict[str, object]:
     """Estima la regresión y ejecuta la prueba F conjunta de las dummies."""
-    muestra = datos[["fecha", variable]].copy()
+    muestra = datos[[DATE_COL, variable]].copy()
     muestra[variable] = pd.to_numeric(muestra[variable], errors="coerce")
     muestra = muestra.dropna()
 
     if len(muestra) <= 13:
         raise ValueError(f"{variable}: no hay suficientes observaciones para la prueba")
 
-    meses = pd.Categorical(muestra["fecha"].dt.month, categories=range(1, 13))
+    meses = pd.Categorical(muestra[DATE_COL].dt.month, categories=range(1, 13))
     dummies = pd.get_dummies(meses, prefix="mes", drop_first=True, dtype=float)
 
     # La tendencia evita atribuir a los meses un patrón que solo proviene del
@@ -90,10 +89,11 @@ def probar_estacionalidad(
 
 
 def main() -> None:
+    configure_runtime()
     datos = pd.read_excel(ARCHIVO_DATOS, sheet_name="Sheet1")
 
     columnas_faltantes = [
-        columna for columna in ["fecha", *VARIABLES] if columna not in datos.columns
+        columna for columna in [DATE_COL, *VARIABLES] if columna not in datos.columns
     ]
     if columnas_faltantes:
         raise KeyError(
@@ -101,9 +101,9 @@ def main() -> None:
             + ", ".join(columnas_faltantes)
         )
 
-    datos["fecha"] = convertir_fechas(datos["fecha"])
-    if datos["fecha"].isna().all():
-        raise ValueError("No fue posible interpretar la columna 'fecha'")
+    datos[DATE_COL] = convertir_fechas(datos[DATE_COL])
+    if datos[DATE_COL].isna().all():
+        raise ValueError(f"No fue posible interpretar la columna '{DATE_COL}'")
 
     resultados = pd.DataFrame(
         [probar_estacionalidad(datos, variable) for variable in VARIABLES]

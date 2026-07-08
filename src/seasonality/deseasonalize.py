@@ -26,12 +26,13 @@ _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+from src.config.settings import DATE_COL, OUT_DIR, DESEASONALIZE_INPUT_FILE, configure_runtime
+
 # ---------------------------------------------------------------------------
 # Configuración de rutas
 # ---------------------------------------------------------------------------
-BASE_DIR = Path(__file__).resolve().parents[2]
-ARCHIVO_DATOS    = BASE_DIR / "data" / "Data No estacional.xlsx"
-ARCHIVO_SALIDA   = BASE_DIR / "outputs" / "datos_desestacionalizados.xlsx"
+ARCHIVO_DATOS = Path(DESEASONALIZE_INPUT_FILE)
+ARCHIVO_SALIDA = Path(OUT_DIR) / "datos_desestacionalizados.xlsx"
 ALPHA = 0.05
 
 # ---------------------------------------------------------------------------
@@ -79,14 +80,14 @@ def estimar_componente_estacional(
     modelo : RegressionResultsWrapper
         Resultado completo de OLS para inspección.
     """
-    muestra = datos[["fecha", variable]].copy()
+    muestra = datos[[DATE_COL, variable]].copy()
     muestra[variable] = pd.to_numeric(muestra[variable], errors="coerce")
     muestra = muestra.dropna()
 
     if len(muestra) <= 13:
         raise ValueError(f"{variable}: observaciones insuficientes para desestacionalizar")
 
-    meses = pd.Categorical(muestra["fecha"].dt.month, categories=range(1, 13))
+    meses = pd.Categorical(muestra[DATE_COL].dt.month, categories=range(1, 13))
     dummies = pd.get_dummies(meses, prefix="mes", drop_first=True, dtype=float)
 
     explicativas = pd.DataFrame(
@@ -115,6 +116,7 @@ def estimar_componente_estacional(
 # Main
 # ---------------------------------------------------------------------------
 def main() -> None:
+    configure_runtime()
     if not VARIABLES_ESTACIONALES:
         print(
             "VARIABLES_ESTACIONALES está vacía.\n"
@@ -124,7 +126,7 @@ def main() -> None:
         return
 
     datos = pd.read_excel(ARCHIVO_DATOS, sheet_name="Sheet1")
-    datos["fecha"] = convertir_fechas(datos["fecha"])
+    datos[DATE_COL] = convertir_fechas(datos[DATE_COL])
 
     columnas_faltantes = [v for v in VARIABLES_ESTACIONALES if v not in datos.columns]
     if columnas_faltantes:
@@ -156,7 +158,7 @@ def main() -> None:
 
     # Alinear todas las series ajustadas con el índice de fechas
     df_sa = pd.DataFrame(series_ajustadas)
-    df_sa.insert(0, "fecha", datos["fecha"].values[: len(df_sa)])
+    df_sa.insert(0, DATE_COL, datos[DATE_COL].values[: len(df_sa)])
 
     # Guardar
     ARCHIVO_SALIDA.parent.mkdir(parents=True, exist_ok=True)

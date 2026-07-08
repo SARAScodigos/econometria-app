@@ -7,8 +7,11 @@ import numpy as np
 # =============================
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 INPUT_FILE = os.path.join(BASE_DIR, "data", "Data estacionaria.xlsx")
-print(INPUT_FILE)
 DATE_COL = "fecha"
+
+# Insumos por etapa
+SEASONALITY_INPUT_FILE = os.path.join(BASE_DIR, "data", "Data No estacional CMAC.xlsx")
+DESEASONALIZE_INPUT_FILE = SEASONALITY_INPUT_FILE
 
 # Endogenas (agregado)
 ENDOG = ["D_ln_Vol_total", "D_Mora_total"]
@@ -16,6 +19,22 @@ ENDOG_LEVELS = ["Vol_total", "Mora_total"]
 
 # Exogenas
 EXOG = ["D_ln_PBI_Desestacionalizado", "D_Tasa_Ref"]
+
+# Variables en niveles/originales para pruebas de estacionalidad mensual
+SEASONALITY_VARIABLES = [
+    "Vol_comerciales",
+    "Mora_comerciales",
+    "Vol_consumo",
+    "Mora_consumo",
+    "Vol_hipotecarios",
+    "Mora_hipotecarios",
+    "Vol_microcreditos",
+    "Mora_microcreditos",
+    "Vol_total",
+    "Mora_total",
+    "Tasa_Ref",
+    "PBI_Desestacionalizado",
+]
 
 # Ventanas de muestra
 SAMPLE_START = "2002-01-01"
