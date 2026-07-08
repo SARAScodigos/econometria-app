@@ -10,8 +10,10 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from src.config.settings import (
-    INPUT_FILE, DATE_COL, ENDOG, EXOG, TRAIN_END, SHOCK_MONTHS, H, MAX_LAG, OUT_DIR, configure_runtime
+    INPUT_FILE, DATE_COL, ENDOG, EXOG, TRAIN_END, SCENARIO_START, SHOCK_MONTHS,
+    H, MAX_LAG, OUT_DIR, configure_runtime
 )
+from src.data.loader import slice_window
 from src.diagnostics.diagnostics import estimate_varx_ols, stability_roots, residual_diagnostics
 
 
@@ -112,13 +114,13 @@ def moving_block_bootstrap(resid: np.ndarray, H: int, block_len: int, rng: np.ra
 def simulate_future(df_all: pd.DataFrame, fit, p: int, exog_future: pd.DataFrame, u_map: dict, eps: np.ndarray):
     """
     df_all: data with ENDOG + EXOG for hist
-    exog_future: DataFrame indexed 2020-03.. for H months, columns EXOG
+    exog_future: DataFrame indexed from SCENARIO_START for H months, columns EXOG
     u_map: dict {Timestamp: np.array([u_vol, u_mora])} deterministic shock only in shock months
     eps: (H x K) stochastic innovations (bootstrap), added every month
 
     returns DataFrame (H x K) for ENDOG
     """
-    start = pd.to_datetime("2020-03-01")
+    start = pd.to_datetime(SCENARIO_START)
     idx = pd.date_range(start=start, periods=H, freq="MS")
     K = len(ENDOG)
 
@@ -195,7 +197,7 @@ def main():
 
     # Subconjunto para estimación
     df_use = df_all[ENDOG + EXOG].dropna()
-    df_pre = df_use.loc["2002-01-01":TRAIN_END].copy()
+    df_pre = slice_window(df_use, "pre_covid")
 
     # ----------------------------
     # Estimate VARX pre-COVID
@@ -214,7 +216,7 @@ def main():
     ex_base = load_exog_csv_robust(os.path.join(OUT_DIR, "exog_forecast_ar.csv"))
     ex_pbi_shock = load_exog_csv_robust(os.path.join(OUT_DIR, "exog_future_pbi_shock.csv"))
 
-    start = pd.to_datetime("2020-03-01")
+    start = pd.to_datetime(SCENARIO_START)
     idx_future = pd.date_range(start=start, periods=H, freq="MS")
     ex_base = ex_base.reindex(idx_future)
     ex_pbi_shock = ex_pbi_shock.reindex(idx_future)
@@ -340,7 +342,7 @@ def main():
             color=styles_det[s]["color"],
         )
 
-    plt.axvline(pd.to_datetime("2020-03-01"), linewidth=1.2)
+    plt.axvline(pd.to_datetime(SCENARIO_START), linewidth=1.2)
     plt.title("Cambio de morosidad: serie observada y escenarios contrafactuales (IC 95% bootstrap)")
     plt.ylabel("D mora")
     plt.xlabel("Fecha")

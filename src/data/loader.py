@@ -9,7 +9,7 @@ _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from src.config.settings import DATE_COL, ENDOG, EXOG
+from src.config.settings import DATE_COL, ENDOG, EXOG, WINDOWS
 
 
 def load_and_prepare(path: str) -> pd.DataFrame:
@@ -20,7 +20,7 @@ def load_and_prepare(path: str) -> pd.DataFrame:
     df = pd.read_excel(path)
 
     if DATE_COL not in df.columns:
-        raise ValueError(f"El archivo debe tener una columna '{DATE_COL}'.")
+        raise ValueError(f"El archivo debe tener una columna con nombre '{DATE_COL}'.")
 
     df[DATE_COL] = pd.to_datetime(df[DATE_COL])
     df = df.set_index(DATE_COL).sort_index()
@@ -34,6 +34,18 @@ def load_and_prepare(path: str) -> pd.DataFrame:
     df_use.index = pd.to_datetime(df_use.index.date)
     return df_use
 
+
+def slice_window(df: pd.DataFrame, window: str, copy: bool = True) -> pd.DataFrame:
+    """Devuelve una ventana temporal definida en settings.WINDOWS."""
+    if window not in WINDOWS:
+        valid = ", ".join(sorted(WINDOWS))
+        raise ValueError(f"Ventana desconocida '{window}'. Opciones validas: {valid}")
+
+    start, end = WINDOWS[window]
+    out = df.loc[start:end] #recortar fechas
+    return out.copy() if copy else out #debbolver el df
+
+#===============================TAREA PAR ALA CASA ===============================
 
 def make_lagged_matrix(df: pd.DataFrame, endog_cols, exog_cols, p: int):
     Y = df[endog_cols].copy()

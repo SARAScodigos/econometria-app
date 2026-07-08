@@ -1,6 +1,6 @@
 """
 Graficos de escenarios (base, independiente, no independiente) vs observado.
-Se grafican las series de ENDOG (diferencias) desde 2020-03 en adelante.
+Se grafican las series de ENDOG (diferencias) desde SCENARIO_START en adelante.
 """
 
 import os
@@ -14,15 +14,18 @@ _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from src.config.settings import INPUT_FILE, DATE_COL, ENDOG, ENDOG_LEVELS, H, OUT_DIR, configure_runtime
-from src.data.loader import load_and_prepare, covid_innovation_vectors
+from src.config.settings import (
+    INPUT_FILE, DATE_COL, ENDOG, ENDOG_LEVELS, TRAIN_END, SCENARIO_START,
+    SHOCK_MONTHS, H, OUT_DIR, configure_runtime
+)
+from src.data.loader import load_and_prepare, slice_window, covid_innovation_vectors
 from src.diagnostics.diagnostics import estimate_varx_ols
 from src.shocks.irf import irf_matrices, response_with_two_shocks
 
 
 def build_counterfactual_series(df_all, fit, e_mar, e_abr, scenario):
     """
-    Devuelve serie contrafactual en diferencias (ENDOG) a partir de 2020-03.
+    Devuelve serie contrafactual en diferencias (ENDOG) a partir de SCENARIO_START.
     scenario: "base" | "independent" | "non_independent"
     """
     Sigma = fit["Sigma"]
@@ -49,7 +52,7 @@ def build_counterfactual_series(df_all, fit, e_mar, e_abr, scenario):
     Psi = irf_matrices(A_list, H)
     irf_df = response_with_two_shocks(Psi, e0, e1, H)
 
-    start = pd.to_datetime("2020-03-01")
+    start = pd.to_datetime(SCENARIO_START)
     dates = pd.date_range(start=start, periods=H + 1, freq="MS")
     irf_df = irf_df.set_index("h")
     out = pd.DataFrame(index=dates)
@@ -58,7 +61,7 @@ def build_counterfactual_series(df_all, fit, e_mar, e_abr, scenario):
     return out
 
 
-def diffs_to_levels(diffs_df, df_levels, base_date="2020-02-01"):
+def diffs_to_levels(diffs_df, df_levels, base_date=TRAIN_END):
     levels = pd.DataFrame(index=diffs_df.index)
     for endog_col, level_col in zip(ENDOG, ENDOG_LEVELS):
         base_level = float(df_levels.loc[base_date, level_col])
@@ -92,20 +95,20 @@ def main():
     configure_runtime()
 
     df_all = load_and_prepare(INPUT_FILE)
-    df_pre = df_all.loc["2002-01-01":"2020-02-01"].copy()
+    df_pre = slice_window(df_all, "pre_covid")
 
     p = 12
     fit = estimate_varx_ols(df_pre, p)
 
-    e_map, _ = covid_innovation_vectors(df_all, fit, p, ["2020-03-01", "2020-04-01"])
-    e_mar = e_map["2020-03-01"]
-    e_abr = e_map["2020-04-01"]
+    e_map, _ = covid_innovation_vectors(df_all, fit, p, SHOCK_MONTHS)
+    e_mar = e_map[SHOCK_MONTHS[0]]
+    e_abr = e_map[SHOCK_MONTHS[1]]
 
     base_df = build_counterfactual_series(df_all, fit, e_mar, e_abr, "base")
     ind_df = build_counterfactual_series(df_all, fit, e_mar, e_abr, "independent")
     non_df = build_counterfactual_series(df_all, fit, e_mar, e_abr, "non_independent")
 
-    obs = df_all.loc["2020-03-01":base_df.index[-1], ENDOG].copy()
+    obs = df_all.loc[SCENARIO_START:base_df.index[-1], ENDOG].copy()
 
     plot_scenarios(
         obs, base_df, ind_df, non_df,
@@ -120,7 +123,7 @@ def main():
         raise ValueError(f"El archivo debe tener una columna '{DATE_COL}'.")
     df_raw[DATE_COL] = pd.to_datetime(df_raw[DATE_COL])
     df_raw = df_raw.set_index(DATE_COL).sort_index()
-    obs_levels = df_raw.loc["2020-03-01":base_df.index[-1], ENDOG_LEVELS].copy()
+    obs_levels = df_raw.loc[SCENARIO_START:base_df.index[-1], ENDOG_LEVELS].copy()
     base_levels = diffs_to_levels(base_df, df_raw)
     ind_levels = diffs_to_levels(ind_df, df_raw)
     non_levels = diffs_to_levels(non_df, df_raw)

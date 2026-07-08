@@ -23,8 +23,10 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from src.config.settings import (
-    INPUT_FILE, DATE_COL, ENDOG, EXOG, TRAIN_END, SHOCK_MONTHS, H, MAX_LAG, OUT_DIR, configure_runtime
+    INPUT_FILE, DATE_COL, ENDOG, EXOG, TRAIN_END, SCENARIO_START, SHOCK_MONTHS,
+    H, MAX_LAG, OUT_DIR, configure_runtime
 )
+from src.data.loader import slice_window
 from src.diagnostics.diagnostics import estimate_varx_ols, stability_roots, residual_diagnostics
 
 
@@ -98,7 +100,7 @@ def simulate_varx_with_u(df_all: pd.DataFrame, fit, p: int, exog_future: pd.Data
     Simulación determinística, pero permitiendo u_t específico en ciertos meses.
     u_map: dict {Timestamp: np.array([u_vol, u_mora])}
     """
-    start = pd.to_datetime("2020-03-01")
+    start = pd.to_datetime(SCENARIO_START)
     idx = pd.date_range(start=start, periods=H, freq="MS")
 
     y_sim = pd.DataFrame(index=idx, columns=ENDOG, dtype=float)
@@ -150,7 +152,7 @@ def diffs_to_levels(df_all: pd.DataFrame, diffs: pd.DataFrame) -> pd.DataFrame:
     vol0 = float(df_all.loc[base_date, "Vol_total"])
     mora0 = float(df_all.loc[base_date, "Mora_total"])
     if vol0 <= 0:
-        raise ValueError("Vol_total en 2020-02 debe ser positivo.")
+        raise ValueError(f"Vol_total en {TRAIN_END} debe ser positivo.")
 
     lnvol0 = float(np.log(vol0))
 
@@ -167,7 +169,7 @@ def main():
     # --- Load data ---
     df_all = load_excel(INPUT_FILE)
     df_use = df_all[ENDOG + EXOG].dropna()
-    df_pre = df_use.loc["2002-01-01":TRAIN_END].copy()
+    df_pre = slice_window(df_use, "pre_covid")
 
     # --- Estimate VARX pre-COVID ---
     p, fit, info = pick_varx_lag_by_bic(df_pre, p_max=MAX_LAG, use_whiteness=True)
@@ -179,7 +181,7 @@ def main():
     # --- Load exogenous paths ---
     ex_base = load_exog_csv(os.path.join(OUT_DIR, "exog_forecast_ar.csv"))
     ex_pbi_shock = load_exog_csv(os.path.join(OUT_DIR, "exog_future_pbi_shock.csv"))
-    start = pd.to_datetime("2020-03-01")
+    start = pd.to_datetime(SCENARIO_START)
     idx = pd.date_range(start=start, periods=H, freq="MS")
     ex_base = ex_base.reindex(idx)
     ex_pbi_shock = ex_pbi_shock.reindex(idx)

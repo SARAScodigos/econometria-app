@@ -3,7 +3,7 @@ Shock macro en PBI (Opción 1: observado vs baseline AR en marzo–abril 2020)
 
 - Usa baseline de exógenas (AR) ya guardado en outputs/exog_forecast_ar.csv
 - Reemplaza D_ln_PBI_Desestacionalizado en 2020-03 y 2020-04 por el valor observado del Excel
-- Simula VARX pre-COVID (2002-01 a 2020-02) con innovaciones endógenas=0
+- Simula VARX pre-COVID segun la ventana configurada con innovaciones endogenas=0
 - Devuelve:
   (i) trayectoria baseline (sin COVID) de endógenas,
   (ii) trayectoria con shock macro (COVID-macro),
@@ -23,8 +23,10 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from src.config.settings import (
-    INPUT_FILE, DATE_COL, ENDOG, EXOG, TRAIN_END, SHOCK_MONTHS, H, MAX_LAG, OUT_DIR, configure_runtime
+    INPUT_FILE, DATE_COL, ENDOG, EXOG, TRAIN_END, SCENARIO_START, SHOCK_MONTHS,
+    H, MAX_LAG, OUT_DIR, configure_runtime
 )
+from src.data.loader import slice_window
 from src.diagnostics.diagnostics import estimate_varx_ols, stability_roots, residual_diagnostics
 
 
@@ -83,7 +85,7 @@ def pick_varx_lag_by_bic(df_pre: pd.DataFrame, p_max=12, alpha=0.05, use_whitene
 # Simulación determinística VARX (innovación = 0)
 # ----------------------------
 def simulate_varx(df_all: pd.DataFrame, fit, p: int, exog_future: pd.DataFrame) -> pd.DataFrame:
-    start = pd.to_datetime("2020-03-01")
+    start = pd.to_datetime(SCENARIO_START)
     idx = pd.date_range(start=start, periods=H, freq="MS")
 
     y_sim = pd.DataFrame(index=idx, columns=ENDOG, dtype=float)
@@ -134,7 +136,7 @@ def diffs_to_levels(df_all: pd.DataFrame, diffs: pd.DataFrame) -> pd.DataFrame:
     vol0 = float(df_all.loc[base_date, "Vol_total"])
     mora0 = float(df_all.loc[base_date, "Mora_total"])
     if vol0 <= 0:
-        raise ValueError("Vol_total en 2020-02 debe ser positivo.")
+        raise ValueError(f"Vol_total en {TRAIN_END} debe ser positivo.")
 
     lnvol0 = float(np.log(vol0))
 
@@ -172,7 +174,7 @@ def main():
 
     # dataset para estimación VARX
     df_use = df_all[ENDOG + EXOG].dropna()
-    df_pre = df_use.loc["2002-01-01":TRAIN_END].copy()
+    df_pre = slice_window(df_use, "pre_covid")
 
     # 1) elegir p y estimar VARX pre-COVID
     p, fit, info = pick_varx_lag_by_bic(df_pre, p_max=MAX_LAG, use_whiteness=True)
@@ -184,7 +186,7 @@ def main():
     exog_base = load_exog_baseline(ex_path)
 
     # asegurar horizonte H y fechas correctas
-    start = pd.to_datetime("2020-03-01")
+    start = pd.to_datetime(SCENARIO_START)
     idx = pd.date_range(start=start, periods=H, freq="MS")
     exog_base = exog_base.reindex(idx)
     if exog_base.isna().any().any():

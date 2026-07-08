@@ -11,8 +11,8 @@ _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from src.config.settings import INPUT_FILE, ENDOG, EXOG, configure_runtime
-from src.data.loader import load_and_prepare
+from src.config.settings import INPUT_FILE, ENDOG, EXOG, SAMPLE_START, SAMPLE_END, configure_runtime
+from src.data.loader import load_and_prepare, slice_window
 from src.diagnostics.diagnostics import estimate_varx_ols, stability_roots, residual_diagnostics
 
 
@@ -37,7 +37,7 @@ def choose_p_by_whiteness(df, p_candidates, lb_lags=12, alpha=0.05):
 
 def main():
     configure_runtime()
-    df_all = load_and_prepare(INPUT_FILE)
+    df_all = slice_window(load_and_prepare(INPUT_FILE), "full")
 
     p_candidates = [1, 3, 6, 12]
     p, fit, eigvals, diag = choose_p_by_whiteness(df_all, p_candidates, lb_lags=12, alpha=0.05)
@@ -46,6 +46,7 @@ def main():
     max_eig = float(np.max(np.abs(eigvals)))
 
     print("=== VARX TOTAL ===")
+    print(f"Ventana: {SAMPLE_START} a {SAMPLE_END}")
     print(f"p(elegido) = {p}")
     print(f"Estable (|eig|<1): {stable} | max|eig|={max_eig:.4f}")
     print("Ljung-Box (lag 12):")

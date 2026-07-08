@@ -13,8 +13,8 @@ _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from src.config.settings import INPUT_FILE, ENDOG, H, configure_runtime
-from src.data.loader import load_and_prepare, covid_innovation_vectors
+from src.config.settings import INPUT_FILE, ENDOG, H, TRAIN_END, SHOCK_MONTHS, configure_runtime
+from src.data.loader import load_and_prepare, slice_window, covid_innovation_vectors
 from src.diagnostics.diagnostics import estimate_varx_ols
 from src.shocks.irf import irf_matrices, response_with_two_shocks
 
@@ -48,20 +48,20 @@ def main():
     configure_runtime()
 
     df_all = load_and_prepare(INPUT_FILE)
-    df_pre = df_all.loc["2002-01-01":"2020-02-01"].copy()
+    df_pre = slice_window(df_all, "pre_covid")
 
     # p fijo pre-COVID
     p = 12
     fit = estimate_varx_ols(df_pre, p)
     A_list = fit["A"]
 
-    # Estado inicial (2020-02)
-    y0 = df_all.loc["2020-02-01", ENDOG].values.astype(float)
+    # Estado inicial pre-shock
+    y0 = df_all.loc[TRAIN_END, ENDOG].values.astype(float)
 
     # Shocks observados Mar/Abr 2020
-    e_map, table = covid_innovation_vectors(df_all, fit, p, ["2020-03-01", "2020-04-01"])
-    e_mar = e_map["2020-03-01"]
-    e_abr = e_map["2020-04-01"]
+    e_map, table = covid_innovation_vectors(df_all, fit, p, SHOCK_MONTHS)
+    e_mar = e_map[SHOCK_MONTHS[0]]
+    e_abr = e_map[SHOCK_MONTHS[1]]
     sig_e = np.sqrt(np.diag(fit["Sigma"]))
     # Renombrar columnas a ENDOG para consistencia
     table = table.rename(columns={
@@ -83,7 +83,7 @@ def main():
 
     print("=== CONTRAFACTUAL COVID (pre-COVID VARX) ===")
     print(f"p = {p}")
-    print(f"Estado inicial (2020-02): {dict(zip(ENDOG, y0))}")
+    print(f"Estado inicial ({TRAIN_END}): {dict(zip(ENDOG, y0))}")
     print("\nShocks (e_t = y_obs - y_pred):")
     print(table.to_string(index=False))
     print("\nResumen IRF (medidas clave):")

@@ -1,6 +1,6 @@
 """
 Baseline SIN COVID (mundo normal):
-- Estima VARX pre-COVID (2002-01 a 2020-02)
+- Estima VARX pre-COVID segun la ventana configurada
 - Pronostica exógenas con AR(p) elegido por BIC
 - Simula endógenas H meses hacia adelante con innovaciones = 0
 - Reconstruye niveles (Vol_total y Mora_total) desde 2020-02
@@ -21,8 +21,10 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from src.config.settings import (
-    INPUT_FILE, DATE_COL, ENDOG, EXOG, TRAIN_END, H, MAX_LAG, OUT_DIR, configure_runtime
+    INPUT_FILE, DATE_COL, ENDOG, EXOG, TRAIN_START, TRAIN_END, SCENARIO_START,
+    H, MAX_LAG, OUT_DIR, configure_runtime
 )
+from src.data.loader import slice_window
 from src.diagnostics.diagnostics import estimate_varx_ols, stability_roots, residual_diagnostics
 
 
@@ -108,12 +110,12 @@ def forecast_ar(model, steps: int, start_date: pd.Timestamp):
 
 def simulate_varx_baseline(df_all: pd.DataFrame, fit, p: int, exog_future: pd.DataFrame):
     """
-    Simula y_t (ENDOG) desde 2020-03 por H meses con innovaciones = 0.
+    Simula y_t (ENDOG) desde SCENARIO_START por H meses con innovaciones = 0.
     Usa la ecuación estimada (params por ecuación) y alimenta:
     - rezagos endógenos: observados hasta 2020-02 + simulados
     - exógenas: exog_future (índice MS)
     """
-    start = pd.to_datetime("2020-03-01")
+    start = pd.to_datetime(SCENARIO_START)
     idx = pd.date_range(start=start, periods=H, freq="MS")
 
     # contenedor de simulación
@@ -169,16 +171,16 @@ def simulate_varx_baseline(df_all: pd.DataFrame, fit, p: int, exog_future: pd.Da
 
 def diffs_to_levels(df_all: pd.DataFrame, diffs: pd.DataFrame):
     """
-    Reconstruye niveles desde 2020-02:
-    - Mora_total_level = Mora_total(2020-02) + cumsum(D_Mora_total)
-    - Vol_total_level = exp( ln(Vol_total(2020-02)) + cumsum(D_ln_Vol_total) )
+    Reconstruye niveles desde TRAIN_END:
+    - Mora_total_level = Mora_total(TRAIN_END) + cumsum(D_Mora_total)
+    - Vol_total_level = exp( ln(Vol_total(TRAIN_END)) + cumsum(D_ln_Vol_total) )
     """
     base_date = pd.to_datetime(TRAIN_END)
     vol0 = float(df_all.loc[base_date, "Vol_total"])
     mora0 = float(df_all.loc[base_date, "Mora_total"])
 
     if vol0 <= 0:
-        raise ValueError("Vol_total en 2020-02 debe ser positivo para reconstrucción log.")
+        raise ValueError(f"Vol_total en {TRAIN_END} debe ser positivo para reconstruccion log.")
 
     lnvol0 = float(np.log(vol0))
 
@@ -200,15 +202,16 @@ def main():
     df_use = df_all[needed].copy().dropna()
 
     # ventana pre-COVID
-    df_pre = df_use.loc["2002-01-01":TRAIN_END].copy()
+    df_pre = slice_window(df_use, "pre_covid")
 
     # 3) elegir p por BIC (+ estabilidad; + opcional Ljung-Box)
     p, fit, info = pick_varx_lag_by_bic(df_pre, p_max=MAX_LAG, use_whiteness=True)
     print("=== BASELINE SIN COVID ===")
+    print(f"Ventana pre-COVID: {TRAIN_START} a {TRAIN_END}")
     print(f"p seleccionado = {p} | info = {info}")
 
-    # 4) estimar AR para exógenas y pronosticar H meses desde 2020-03
-    start_fc = pd.to_datetime("2020-03-01")
+    # 4) estimar AR para exogenas y pronosticar H meses desde SCENARIO_START
+    start_fc = pd.to_datetime(SCENARIO_START)
     exog_future = pd.DataFrame(index=pd.date_range(start=start_fc, periods=H, freq="MS"))
 
     ar_specs = {}

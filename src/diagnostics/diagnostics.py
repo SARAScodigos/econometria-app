@@ -98,13 +98,13 @@ def residual_diagnostics(resid: np.ndarray, lags=12):
 
 
 if __name__ == "__main__":
-    from src.config.settings import INPUT_FILE, MAX_LAG, configure_runtime
-    from src.data.loader import load_and_prepare
+    from src.config.settings import INPUT_FILE, MAX_LAG, SAMPLE_START, SAMPLE_END, configure_runtime
+    from src.data.loader import load_and_prepare, slice_window
 
     configure_runtime()
 
     df_all = load_and_prepare(INPUT_FILE)
-    df_test = df_all.loc["2002-01-01":"2022-12-01"].copy()
+    df_test = slice_window(df_all, "full")
 
     p = 12
     fit = estimate_varx_ols(df_test, p)
@@ -115,6 +115,7 @@ if __name__ == "__main__":
     diag = residual_diagnostics(resid, lags=12)
 
     print("=== VARX TEST ===")
+    print(f"Ventana: {SAMPLE_START} a {SAMPLE_END}")
     print(f"p(fijo) = {p}")
     print(f"Estable (|eig|<1): {stable} | max|eig|={float(np.max(np.abs(eigvals))):.4f}")
     print("Ljung-Box (lag 12):")

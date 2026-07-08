@@ -65,8 +65,27 @@ ENDOG_LEVELS = ["Vol_total", "Mora_total"]
 
 EXOG = ["D_ln_PBI_Desestacionalizado", "D_Tasa_Ref"]
 
+SAMPLE_START = "2002-01-01"
+SAMPLE_END = "2022-12-01"
+
+TRAIN_START = SAMPLE_START
 TRAIN_END = "2020-02-01"
+
+SCENARIO_START = "2020-03-01"
+SCENARIO_END = SAMPLE_END
+
 SHOCK_MONTHS = ["2020-03-01", "2020-04-01"]
+
+AID_START = "2020-05-01"
+AID_END = "2022-11-01"
+
+WINDOWS = {
+    "full": (SAMPLE_START, SAMPLE_END),
+    "pre_covid": (TRAIN_START, TRAIN_END),
+    "scenario": (SCENARIO_START, SCENARIO_END),
+    "aid": (AID_START, AID_END),
+}
+
 MAX_LAG = 12
 ```
 
@@ -74,6 +93,12 @@ Lectura:
 
 - `ENDOG` contiene las variables que entran al VARX en diferencias.
 - `ENDOG_LEVELS` contiene las variables endógenas en niveles asociadas.
+- `SAMPLE_START` y `SAMPLE_END` delimitan la muestra completa disponible.
+- `TRAIN_START` y `TRAIN_END` delimitan la ventana pre-COVID usada para estimar la dinámica normal.
+- `SCENARIO_START` y `SCENARIO_END` delimitan el periodo donde se simulan contrafactuales.
+- `SHOCK_MONTHS` define los meses usados para calibrar el shock inicial COVID.
+- `AID_START` y `AID_END` delimitan la ventana tentativa de medidas de alivio/rescate; deben ajustarse cuando se defina la proxy final.
+- `WINDOWS` permite que los scripts pidan ventanas por nombre mediante `slice_window(df, "pre_covid")`, `slice_window(df, "full")`, etc., sin escribir fechas directamente en cada archivo.
 - Si `ENDOG` usa `D_ln_Vol_total`, la variable en nivel compatible para Johansen es `Ln_Vol_total`, no `Vol_total`.
 - Si `ENDOG` usa `D_Mora_total`, la variable en nivel compatible es `Mora_total`.
 

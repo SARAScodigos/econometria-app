@@ -14,7 +14,7 @@ _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from src.config.settings import ENDOG, EXOG, MAX_LAG
+from src.config.settings import ENDOG, EXOG, MAX_LAG, TRAIN_START, TRAIN_END
 from src.diagnostics.diagnostics import estimate_varx_ols
 
 
@@ -33,11 +33,12 @@ def ic_table(df: pd.DataFrame, max_lag: int = MAX_LAG) -> pd.DataFrame:
 
 if __name__ == "__main__":
     from src.config.settings import INPUT_FILE, configure_runtime
-    from src.data.loader import load_and_prepare
+    from src.data.loader import load_and_prepare, slice_window
 
     configure_runtime()
-    df = load_and_prepare(INPUT_FILE)
+    df = slice_window(load_and_prepare(INPUT_FILE), "pre_covid")
     tabla = ic_table(df)
+    print(f"Ventana de seleccion: {TRAIN_START} a {TRAIN_END}")
     print(tabla.to_string(index=False))
     print(f"\np óptimo AIC: {int(tabla.loc[tabla['AIC_mean'].idxmin(), 'p'])}")
     print(f"p óptimo BIC: {int(tabla.loc[tabla['BIC_mean'].idxmin(), 'p'])}")

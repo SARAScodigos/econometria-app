@@ -10,8 +10,10 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from src.config.settings import (
-    INPUT_FILE, DATE_COL, ENDOG, EXOG, TRAIN_END, SHOCK_MONTHS, H, MAX_LAG, OUT_DIR, configure_runtime
+    INPUT_FILE, DATE_COL, ENDOG, EXOG, TRAIN_END, SCENARIO_START, SHOCK_MONTHS,
+    H, MAX_LAG, OUT_DIR, configure_runtime
 )
+from src.data.loader import slice_window
 from src.diagnostics.diagnostics import estimate_varx_ols, stability_roots, residual_diagnostics
 
 
@@ -71,7 +73,7 @@ def pick_varx_lag_by_bic(df_pre: pd.DataFrame, p_max=12, alpha=0.05, use_whitene
 
 
 def simulate_future(df_all: pd.DataFrame, fit, p: int, exog_future: pd.DataFrame, u_map: dict, eps: np.ndarray):
-    start = pd.to_datetime("2020-03-01")
+    start = pd.to_datetime(SCENARIO_START)
     idx = pd.date_range(start=start, periods=H, freq="MS")
     K = len(ENDOG)
 
@@ -133,7 +135,7 @@ def main():
         raise ValueError("No existe columna Mora_total en el Excel.")
 
     df_use = df_all[ENDOG + EXOG].dropna()
-    df_pre = df_use.loc["2002-01-01":TRAIN_END].copy()
+    df_pre = slice_window(df_use, "pre_covid")
 
     p, fit, info = pick_varx_lag_by_bic(df_pre, p_max=MAX_LAG, use_whiteness=True)
     Sigma = fit["Sigma"]
@@ -141,7 +143,7 @@ def main():
     ex_base = load_exog_csv_robust(os.path.join(OUT_DIR, "exog_forecast_ar.csv"))
     ex_pbi_shock = load_exog_csv_robust(os.path.join(OUT_DIR, "exog_future_pbi_shock.csv"))
 
-    start = pd.to_datetime("2020-03-01")
+    start = pd.to_datetime(SCENARIO_START)
     idx_future = pd.date_range(start=start, periods=H, freq="MS")
     ex_base = ex_base.reindex(idx_future)
     ex_pbi_shock = ex_pbi_shock.reindex(idx_future)
@@ -200,7 +202,7 @@ def main():
     for s, series in plot_series.items():
         plt.plot(idx_branch, series, linestyle=styles[s]["ls"], linewidth=styles[s]["lw"], label=styles[s]["label"])
 
-    plt.axvline(pd.to_datetime("2020-03-01"), linewidth=1.2)
+    plt.axvline(pd.to_datetime(SCENARIO_START), linewidth=1.2)
     plt.title("Morosidad: niveles observados y escenarios contrafactuales")
     plt.ylabel("Mora_total (nivel)")
     plt.xlabel("Fecha")
