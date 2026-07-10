@@ -3,7 +3,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
-from statsmodels.stats.diagnostic import acorr_ljungbox
+from statsmodels.stats.diagnostic import acorr_ljungbox, het_breuschpagan, het_white
+from statsmodels.stats.stattools import jarque_bera
 
 _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
@@ -46,7 +47,10 @@ def estimate_varx_ols(df: pd.DataFrame, p: int):
 
     return {
         "p": p, "results": results, "Sigma": Sigma, "A": A, "B": B,
-        "Y_index": Y.index, "X_columns": X.columns
+        "Y": Y,
+        "X": X,
+        "Y_index": Y.index,
+        "X_columns": X.columns,
     }
 
 '''
@@ -95,6 +99,73 @@ def residual_diagnostics(resid: np.ndarray, lags=12):
             "lb_pvalue": float(lb["lb_pvalue"].iloc[0])
         })
     return pd.DataFrame(out)
+
+
+def normality_diagnostics(fit: dict) -> pd.DataFrame:
+    """Jarque-Bera por ecuación para normalidad de residuos."""
+    rows = []
+    for ycol in ENDOG:
+        jb_stat, jb_pvalue, skew, kurtosis = jarque_bera(fit["results"][ycol].resid)
+        rows.append({
+            "eq": ycol,
+            "jb_stat": float(jb_stat),
+            "jb_pvalue": float(jb_pvalue),
+            "skew": float(skew),
+            "kurtosis": float(kurtosis),
+        })
+    return pd.DataFrame(rows)
+
+
+def heteroskedasticity_diagnostics(fit: dict) -> pd.DataFrame:
+    """Breusch-Pagan y White por ecuación para heterocedasticidad."""
+    rows = []
+    x = fit["X"]
+    for ycol in ENDOG:
+        resid = fit["results"][ycol].resid
+        bp_stat, bp_pvalue, bp_f_stat, bp_f_pvalue = het_breuschpagan(resid, x)
+        white_stat, white_pvalue, white_f_stat, white_f_pvalue = het_white(resid, x)
+        rows.append({
+            "eq": ycol,
+            "bp_stat": float(bp_stat),
+            "bp_pvalue": float(bp_pvalue),
+            "bp_f_stat": float(bp_f_stat),
+            "bp_f_pvalue": float(bp_f_pvalue),
+            "white_stat": float(white_stat),
+            "white_pvalue": float(white_pvalue),
+            "white_f_stat": float(white_f_stat),
+            "white_f_pvalue": float(white_f_pvalue),
+        })
+    return pd.DataFrame(rows)
+
+
+def stability_diagnostics(fit: dict) -> tuple[pd.DataFrame, np.ndarray]:
+    """Raíces del companion matrix y resumen de estabilidad."""
+    eigvals = stability_roots(fit["A"])
+    moduli = np.abs(eigvals)
+    summary = pd.DataFrame([{
+        "p": int(fit["p"]),
+        "estable": bool(np.all(moduli < 1)),
+        "max_abs_eigenvalue": float(np.max(moduli)),
+    }])
+    roots = pd.DataFrame({
+        "root_real": eigvals.real,
+        "root_imag": eigvals.imag,
+        "abs_root": moduli,
+    })
+    return summary, roots
+
+
+def varx_diagnostics(fit: dict, lb_lags: int = 12) -> dict[str, pd.DataFrame]:
+    """Batería estándar de diagnósticos para el VARX estimado."""
+    resid = np.column_stack([fit["results"][y].resid for y in ENDOG])
+    stability_summary, stability_roots_df = stability_diagnostics(fit)
+    return {
+        "stability": stability_summary,
+        "stability_roots": stability_roots_df,
+        "ljung_box": residual_diagnostics(resid, lags=lb_lags),
+        "jarque_bera": normality_diagnostics(fit),
+        "heteroskedasticity": heteroskedasticity_diagnostics(fit),
+    }
 
 
 if __name__ == "__main__":

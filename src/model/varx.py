@@ -11,9 +11,14 @@ _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from src.config.settings import INPUT_FILE, ENDOG, EXOG, SAMPLE_START, SAMPLE_END, configure_runtime
+from src.config.settings import INPUT_FILE, ENDOG, EXOG, SAMPLE_START, SAMPLE_END, VARX_MODEL_FILE, configure_runtime
 from src.data.loader import load_and_prepare, slice_window
-from src.diagnostics.diagnostics import estimate_varx_ols, stability_roots, residual_diagnostics
+from src.diagnostics.diagnostics import (
+    estimate_varx_ols,
+    stability_roots,
+    residual_diagnostics,
+    varx_diagnostics,
+)
 
 
 def choose_p_by_whiteness(df, p_candidates, lb_lags=12, alpha=0.05):
@@ -37,22 +42,27 @@ def choose_p_by_whiteness(df, p_candidates, lb_lags=12, alpha=0.05):
 
 def main():
     configure_runtime()
-    df_all = slice_window(load_and_prepare(INPUT_FILE), "full")
-
-    p_candidates = [1, 3, 6, 12]
-    p, fit, eigvals, diag = choose_p_by_whiteness(df_all, p_candidates, lb_lags=12, alpha=0.05)
+    df_all = slice_window(load_and_prepare(VARX_MODEL_FILE), "full")
+    lb_lags=12
+    p_candidates = [12]
+    p, fit, eigvals, diag = choose_p_by_whiteness(df_all, p_candidates, lb_lags, alpha=0.05)
 
     stable = bool(np.all(np.abs(eigvals) < 1))
     max_eig = float(np.max(np.abs(eigvals)))
+    diagnostics = varx_diagnostics(fit, lb_lags=lb_lags)
 
     print("=== VARX TOTAL ===")
     print(f"Ventana: {SAMPLE_START} a {SAMPLE_END}")
     print(f"p(elegido) = {p}")
     print(f"Estable (|eig|<1): {stable} | max|eig|={max_eig:.4f}")
-    print("Ljung-Box (lag 12):")
+    print(f"Ljung-Box (lag {lb_lags}):")
     print(diag.to_string(index=False))
     print("ENDOG:", ENDOG)
     print("EXOG:", EXOG)
+    print("\nJarque-Bera (normalidad de residuos):")
+    print(diagnostics["jarque_bera"].to_string(index=False))
+    print("\nHeterocedasticidad (Breusch-Pagan / White):")
+    print(diagnostics["heteroskedasticity"].to_string(index=False))
 
 
 if __name__ == "__main__":
