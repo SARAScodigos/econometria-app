@@ -1,3 +1,4 @@
+# Limpieza y preparacion de datos.
 ## La estacionalidad *(Prueba F de dummies regresion OLS)*
 
 * Se toma desde `2002-01 a 2022-12` es decir la ventana *full* en [settings.py](src/config/settings.py)
@@ -32,6 +33,15 @@ Explorar los niveles correspondientes para las endógenas [cointegracion.py](src
 ``` Los resultados indicaron No cointegración para las variables I(1), entonces tenemos camino libre para aplicar VARX en dierencias. ```
 
 
+# Proceso de modelamiento VARX en diferencias
+
+
+**Variables Definidas** $\rightarrow$ **Elección Provisional de Rezagos** $\rightarrow$ **Construcción de Regresores** $\rightarrow$ **Estimación de Coeficientes** $\rightarrow$ **Comparación (AIC/BIC)**
+
+* tras aplicar [lag_selecction.py](src/model/lag_selection.py) se ecnontró en la ventana *full* un valor de BIC =1 y AIC = 1 como rezagos optimos (solo mes)
+|BIC|AIC|
+|-|---|
+|1|1|
 
 
 

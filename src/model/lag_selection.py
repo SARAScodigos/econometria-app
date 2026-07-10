@@ -22,7 +22,7 @@ def ic_table(df: pd.DataFrame, max_lag: int = MAX_LAG) -> pd.DataFrame:
     rows = []
     for p in range(1, max_lag + 1):
         try:
-            fit = estimate_varx_ols(df, p)
+            fit = estimate_varx_ols(df, p) # Estimacion del modelo VARX para un p determinado por __main__
             aic = float(np.mean([fit["results"][y].aic for y in ENDOG]))
             bic = float(np.mean([fit["results"][y].bic for y in ENDOG]))
             rows.append({"p": p, "AIC_mean": aic, "BIC_mean": bic})
@@ -32,11 +32,11 @@ def ic_table(df: pd.DataFrame, max_lag: int = MAX_LAG) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    from src.config.settings import INPUT_FILE, configure_runtime
+    from src.config.settings import VARX_MODEL_FILE, configure_runtime
     from src.data.loader import load_and_prepare, slice_window
 
     configure_runtime()
-    df = slice_window(load_and_prepare(INPUT_FILE), "pre_covid")
+    df = slice_window(load_and_prepare(VARX_MODEL_FILE), "full")
     tabla = ic_table(df)
     print(f"Ventana de seleccion: {TRAIN_START} a {TRAIN_END}")
     print(tabla.to_string(index=False))

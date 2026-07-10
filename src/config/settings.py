@@ -23,6 +23,7 @@ CORRECTION_UNIT_ROOT_FILE = UNIT_ROOTS_FILE
 
 #======================= Ahora archivo para cointegracion de Johansen ===================
 COINTEGRATION_FILE = UNIT_ROOTS_FILE
+VARX_MODEL_FILE=os.path.join(BASE_DIR, "data", "datos_varx.xlsx")
 
 
 # Endogenas (agregado)
@@ -30,7 +31,7 @@ ENDOG = ["D_ln_Vol_total", "D_Mora_total"]
 ENDOG_LEVELS = ["Vol_total", "Mora_total"]
 
 # Exogenas
-EXOG = ["D_ln_PBI_Desestacionalizado", "D_Tasa_Ref"]
+EXOG = ["D_ln_PBI_Desestacionalizado", "D_Tasa_Ref", "D_Covid", "D_Intervencion_Gob"]
 
 # Variables en niveles/originales para pruebas de estacionalidad mensual
 SEASONALITY_VARIABLES = [

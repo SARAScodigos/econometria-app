@@ -15,7 +15,7 @@ from src.config.settings import DATE_COL, ENDOG, EXOG, WINDOWS
 def load_and_prepare(path: str) -> pd.DataFrame:
     if not os.path.exists(path):
         raise FileNotFoundError(
-            f"No encuentro '{path}'. Colocalo junto al script o ajusta INPUT_FILE."
+            f"No encuentro '{path}'. Colocalo junto al script o ajusta MODEL_VARX_FILE."
         )
     df = pd.read_excel(path)
 
