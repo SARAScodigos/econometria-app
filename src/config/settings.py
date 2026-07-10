@@ -6,12 +6,24 @@ import numpy as np
 # Parametros editables
 # =============================
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Carpeta de salida
+OUT_DIR = os.path.join(BASE_DIR, "outputs")
+
 INPUT_FILE = os.path.join(BASE_DIR, "data", "Data estacionaria.xlsx")
 DATE_COL = "fecha"
 
 # Insumos por etapa
+#========Comenzar por la estacionaldiad =====================================
 SEASONALITY_INPUT_FILE = os.path.join(BASE_DIR, "data", "Data No estacional CMAC.xlsx")
 DESEASONALIZE_INPUT_FILE = SEASONALITY_INPUT_FILE
+
+#============== Ahora la estacionariedad ====================================
+UNIT_ROOTS_FILE = os.path.join(BASE_DIR, "data", "datos_transformados_estacionarios.xlsx")
+CORRECTION_UNIT_ROOT_FILE = UNIT_ROOTS_FILE
+
+#======================= Ahora archivo para cointegracion de Johansen ===================
+COINTEGRATION_FILE = UNIT_ROOTS_FILE
+
 
 # Endogenas (agregado)
 ENDOG = ["D_ln_Vol_total", "D_Mora_total"]
@@ -34,6 +46,24 @@ SEASONALITY_VARIABLES = [
     "Mora_total",
     "Tasa_Ref",
     "PBI_Desestacionalizado",
+]
+
+VARIABLES_NIVELES_UNIT_ROOTS = SEASONALITY_VARIABLES
+
+
+VARIABLES_TRANSFORMADAS_I = [
+    "D_ln_Vol_comerciales",
+    "D_Mora_comerciales",
+    "D_ln_Vol_consumo",
+    "D_Mora_consumo",
+    "D_ln_Vol_hipotecarios",
+    "D_Mora_hipotecarios",
+    "D_ln_Vol_microcreditos",
+    "D_Mora_microcreditos",
+    "D_ln_Vol_total",
+    "D_Mora_total",
+    "D_Tasa_Ref",
+    "D_ln_PBI_Desestacionalizado",
 ]
 
 # Ventanas de muestra
@@ -61,8 +91,7 @@ H = 48
 # Rezagos maximos a evaluar
 MAX_LAG = 12
 
-# Carpeta de salida
-OUT_DIR = os.path.join(BASE_DIR, "outputs")
+
 
 
 WINDOWS = {

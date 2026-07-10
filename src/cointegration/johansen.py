@@ -27,16 +27,9 @@ _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from src.config.settings import BASE_DIR, DATE_COL, ENDOG, ENDOG_LEVELS, INPUT_FILE, OUT_DIR
+from src.config.settings import BASE_DIR, DATE_COL, ENDOG, ENDOG_LEVELS, INPUT_FILE, OUT_DIR, COINTEGRATION_FILE
 
-POSIBLES_ARCHIVOS_DATOS = [
-    Path(INPUT_FILE),
-    Path(BASE_DIR) / "data" / "Data estacionaria.xlsx",
-]
-ARCHIVO_DATOS = next(
-    (archivo for archivo in POSIBLES_ARCHIVOS_DATOS if archivo.exists()),
-    Path(INPUT_FILE),
-)
+ARCHIVO_DATOS=COINTEGRATION_FILE
 ARCHIVO_RESULTADOS = Path(OUT_DIR) / "resultados_johansen.xlsx"
 ALPHA = 0.05
 
@@ -248,13 +241,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--det-order",
         type=int,
-        default=0,
+        default=1,
         help="Orden determinístico de Johansen: -1 sin constante, 0 constante, 1 tendencia.",
     )
     parser.add_argument(
         "--k-ar-diff",
         type=int,
-        default=1,
+        default=3,
         help="Número de rezagos en diferencias para Johansen.",
     )
     parser.add_argument(

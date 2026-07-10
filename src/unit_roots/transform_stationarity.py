@@ -1,5 +1,4 @@
-"""
-Genera transformaciones usuales para trabajar con series estacionarias.
+"""Genera transformaciones usuales para trabajar con series estacionarias.
 
 Entrada por defecto:
     econometria-app/data/Data No estacionaria.xlsx
@@ -31,28 +30,47 @@ _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-BASE_DIR = Path(__file__).resolve().parents[2]
-ARCHIVO_DATOS = BASE_DIR / "data" / "Data estacional.xlsx"
-ARCHIVO_SALIDA = BASE_DIR / "outputs" / "datos_transformados_estacionarios.xlsx"
-DATE_COL = "fecha"
+from src.config.settings import (
+    CORRECTION_UNIT_ROOT_FILE,
+    DATE_COL,
+    OUT_DIR,
+    VARIABLES_NIVELES_UNIT_ROOTS,
+    VARIABLES_TRANSFORMADAS_I,
+)
 
-VARIABLES_LOG_DIFF = [
-    "Vol_comerciales",
-    "Vol_consumo",
-    "Vol_hipotecarios",
-    "Vol_microcreditos",
-    "Vol_total",
-    "PBI_Desestacionalizado",
-]
+ARCHIVO_DATOS = Path(CORRECTION_UNIT_ROOT_FILE)
+ARCHIVO_SALIDA = Path(OUT_DIR) / "datos_transformados_estacionarios.xlsx"
 
-VARIABLES_DIFF = [
-    "Mora_comerciales",
-    "Mora_consumo",
-    "Mora_hipotecarios",
-    "Mora_microcreditos",
-    "Mora_total",
-    "Tasa_Ref",
-]
+
+def transformacion_sugerida(variable: str) -> str:
+    """Define la transformación estacionaria sugerida para una variable."""
+    normalized = variable.lower()
+    if normalized.startswith(("vol_", "vol")) or "pbi" in normalized:
+        return "log_difference"
+    return "difference"
+
+
+def variables_log_diff() -> list[str]:
+    """Variables configuradas para logaritmo y diferencia logarítmica."""
+    return [
+        variable
+        for variable in VARIABLES_NIVELES_UNIT_ROOTS
+        if transformacion_sugerida(variable) == "log_difference"
+    ]
+
+
+def variables_diff() -> list[str]:
+    """Variables configuradas para primera diferencia simple."""
+    return [
+        variable
+        for variable in VARIABLES_NIVELES_UNIT_ROOTS
+        if transformacion_sugerida(variable) == "difference"
+    ]
+
+
+VARIABLES_LOG_DIFF = variables_log_diff()
+VARIABLES_DIFF = variables_diff()
+VARIABLES_TRANSFORMADAS = VARIABLES_TRANSFORMADAS_I
 
 
 def convertir_fechas(serie: pd.Series) -> pd.Series:

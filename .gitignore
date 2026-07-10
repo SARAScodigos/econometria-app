@@ -15,3 +15,5 @@ env/
 # No ignoramos outputs/ si se desea hacer commit, pero si se generan
 # automáticamente, quizás sea mejor ignorarlos.
 # outputs/
+outputs/*
+

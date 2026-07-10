@@ -1,8 +1,8 @@
-"""
-Comprobación de estacionariedad mediante pruebas de raíz unitaria.
+"""Comprobación de estacionariedad mediante pruebas de raíz unitaria.
 
-Este script lee el archivo de datos, aplica ADF y KPSS a las variables
-seleccionadas, y guarda un resumen en Excel.
+Este módulo solo evalúa si las series son estacionarias o no. No crea
+transformaciones; las diferencias, logaritmos y diferencias logarítmicas se
+generan en ``src/unit_roots/transform_stationarity.py``.
 
 Interpretación:
   - ADF:
@@ -34,40 +34,21 @@ _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-BASE_DIR = Path(__file__).resolve().parents[2]
-ARCHIVO_DATOS = BASE_DIR / "data" / "Data estacionaria.xlsx"
-ARCHIVO_RESULTADOS = BASE_DIR / "outputs" / "resultados_raiz_unitaria_test.xlsx"
+from src.config.settings import (
+    UNIT_ROOTS_FILE,
+    VARIABLES_NIVELES_UNIT_ROOTS,
+    VARIABLES_TRANSFORMADAS_I,
+    BASE_DIR,
+    DATE_COL, TRAIN_END, TRAIN_START
+)
+
+VARIABLES_NIVELES = VARIABLES_NIVELES_UNIT_ROOTS
+VARIABLES_TRANSFORMADAS = VARIABLES_TRANSFORMADAS_I
+ARCHIVO_DATOS = UNIT_ROOTS_FILE
+ARCHIVO_RESULTADOS = Path(BASE_DIR) / "outputs" / "resultados_raiz_unitaria_test.xlsx"
 ALPHA = 0.05
 
-VARIABLES_NIVELES = [
-    "Vol_comerciales",
-    "Mora_comerciales",
-    "Vol_consumo",
-    "Mora_consumo",
-    "Vol_hipotecarios",
-    "Mora_hipotecarios",
-    "Vol_microcreditos",
-    "Mora_microcreditos",
-    "Vol_total",
-    "Mora_total",
-    "Tasa_Ref",
-    "PBI_Desestacionalizado",
-]
 
-VARIABLES_TRANSFORMADAS = [
-    "D_ln_Vol_comerciales",
-    "D_Mora_comerciales",
-    "D_ln_Vol_consumo",
-    "D_Mora_consumo",
-    "D_ln_Vol_hipotecarios",
-    "D_Mora_hipotecarios",
-    "D_ln_Vol_microcreditos",
-    "D_Mora_microcreditos",
-    "D_ln_Vol_total",
-    "D_Mora_total",
-    "D_Tasa_Ref",
-    "D_ln_PBI_Desestacionalizado",
-]
 
 
 def limpiar_serie(series: pd.Series) -> pd.Series:
@@ -230,9 +211,9 @@ def parse_args() -> argparse.Namespace:
         help="Ruta del Excel de salida.",
     )
     parser.add_argument(
-        "--solo-transformadas",
-        action="store_true",
-        help="Evalúa solo columnas transformadas: D_*, D_ln_*.",
+        "--sheet",
+        default="Datos_transformados",
+        help="Hoja del Excel de entrada.",
     )
     return parser.parse_args()
 
@@ -242,11 +223,10 @@ def main() -> None:
     archivo_datos = Path(args.input)
     archivo_resultados = Path(args.output)
 
-    datos = pd.read_excel(archivo_datos, sheet_name="Datos_transformados")
-    variables = VARIABLES_TRANSFORMADAS if args.solo_transformadas else [
-        *VARIABLES_NIVELES,
-        *VARIABLES_TRANSFORMADAS,
-    ]
+    datos = pd.read_excel(archivo_datos, sheet_name=args.sheet)
+    #datos[DATE_COL] = pd.to_datetime(datos[DATE_COL])
+    #datos = datos[(datos[DATE_COL] >= TRAIN_START) & (datos[DATE_COL] <= TRAIN_END)]
+    variables = [*VARIABLES_NIVELES, *VARIABLES_TRANSFORMADAS]
 
     resumen, detalle = run_all(datos, variables)
 
