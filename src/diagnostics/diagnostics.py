@@ -168,6 +168,28 @@ def varx_diagnostics(fit: dict, lb_lags: int = 12) -> dict[str, pd.DataFrame]:
     }
 
 
+def coefficient_table(fit: dict, cov_type: str = "HC3") -> pd.DataFrame:
+    """Coeficientes por ecuación con errores estándar robustos."""
+    rows = []
+    x_names = list(fit["X_columns"])
+    for ycol in ENDOG:
+        result = fit["results"][ycol]
+        robust = result.get_robustcov_results(cov_type=cov_type)
+        for i, name in enumerate(x_names):
+            rows.append({
+                "eq": ycol,
+                "variable": name,
+                "coef": float(result.params[i]),
+                "std_err_ols": float(result.bse[i]),
+                "pvalue_ols": float(result.pvalues[i]),
+                "cov_type": cov_type,
+                "std_err_robust": float(robust.bse[i]),
+                "t_robust": float(robust.tvalues[i]),
+                "pvalue_robust": float(robust.pvalues[i]),
+            })
+    return pd.DataFrame(rows)
+
+
 if __name__ == "__main__":
     from src.config.settings import INPUT_FILE, MAX_LAG, SAMPLE_START, SAMPLE_END, configure_runtime
     from src.data.loader import load_and_prepare, slice_window

@@ -68,13 +68,17 @@ D_ln_Vol_total 9.475651   0.661856
 ## Estabilidad del modelo con AR
 * Estable (|eig|<1): True 
 
-## Varianza de los residuos Heterocedasticidad 
+## Varianza de los residuos Heterocedasticidad HC1/HC3
+* Varianza de los errores no es constante. *Signficancia de los coeficientes*
 
+La prueba de heterocedasticidad sugiere que la varianza de los residuos no es constante entre observaciones. Esto no cambia los coeficientes estimados por OLS del VARX, pero sí puede afectar los errores estándar, los estadísticos t y los p-valores. Por ello, la interpretación de significancia debe hacerse con errores estándar robustos. En este modelo se emplea HC3 porque es una corrección más conservadora ante heterocedasticidad y resulta adecuada cuando se trabaja con muestras moderadas y muchos regresores, como ocurre con un VARX de 12 rezagos. En consecuencia, los coeficientes se mantienen, pero la inferencia se reporta usando `std_err_robust`, `t_robust` y `pvalue_robust`.
 
 ## Causalidad de Granger explicacion de una variable a traves de otra
 
+# Extraccion de coeficientes del modelo
 
-
+## Coefientes y significancia
+* HC3 como 
 
 
 
