@@ -78,7 +78,7 @@ La prueba de heterocedasticidad sugiere que la varianza de los residuos no es co
 # Extraccion de coeficientes del modelo
 
 ## Coefientes y significancia
-* HC3 como 
+* HC3 como existía variabilidad en los coeficientes fue necesario aplicar esta corrreccion dando que ninguna variable fuese significativa al momento de predecir 
 
 
 

@@ -39,7 +39,24 @@ def choose_p_by_whiteness(df, p_candidates, lb_lags=12, alpha=0.05):
         if stable and ok_white:
             return p, fit, eigvals, diag
         best = (p, fit, eigvals, diag)
+        print(fit)
     return best
+
+
+def print_fit_summary(fit: dict) -> None:
+    """Imprime las partes principales del objeto fit VARX."""
+    print("\nResumen del objeto fit:")
+    print("Claves:", list(fit.keys()))
+    print("p:", fit["p"])
+    print("Columnas X:", list(fit["X_columns"]))
+    print("\nMatriz Sigma de residuos:")
+    print(pd.DataFrame(fit["Sigma"], index=ENDOG, columns=ENDOG).to_string())
+    print("\nMatrices A de rezagos endógenos:")
+    for i, matrix in enumerate(fit["A"], start=1):
+        print(f"A{i}:")
+        print(pd.DataFrame(matrix, index=ENDOG, columns=ENDOG).to_string())
+    print("\nMatriz B de exógenas:")
+    print(pd.DataFrame(fit["B"], index=ENDOG, columns=EXOG).to_string())
 
 
 def main():
@@ -87,6 +104,7 @@ def main():
     key_vars = ["D_Covid", "D_Intervencion_Gob", "D_ln_PBI_Desestacionalizado", "D_Tasa_Ref"]
     key_rows = coefficients[coefficients["variable"].isin(key_vars)]
     print(key_rows.to_string(index=False))
+    print_fit_summary(fit)
     print(f"\nResultados guardados en: {output_path}")
 
 
