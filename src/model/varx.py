@@ -6,14 +6,21 @@ Selecciona p por ruido blanco + estabilidad y reporta diagnosticos.
 import sys
 from pathlib import Path
 import numpy as np
+import pandas as pd
 
 _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from src.config.settings import INPUT_FILE, ENDOG, EXOG, SAMPLE_START, SAMPLE_END, configure_runtime
+from src.config.settings import ENDOG, EXOG, OUT_DIR, SAMPLE_START, SAMPLE_END, VARX_MODEL_FILE, configure_runtime
 from src.data.loader import load_and_prepare, slice_window
-from src.diagnostics.diagnostics import estimate_varx_ols, stability_roots, residual_diagnostics
+from src.diagnostics.diagnostics import (
+    coefficient_table,
+    estimate_varx_ols,
+    stability_roots,
+    residual_diagnostics,
+    varx_diagnostics,
+)
 
 
 def choose_p_by_whiteness(df, p_candidates, lb_lags=12, alpha=0.05):
@@ -32,27 +39,73 @@ def choose_p_by_whiteness(df, p_candidates, lb_lags=12, alpha=0.05):
         if stable and ok_white:
             return p, fit, eigvals, diag
         best = (p, fit, eigvals, diag)
+        print(fit)
     return best
+
+
+def print_fit_summary(fit: dict) -> None:
+    """Imprime las partes principales del objeto fit VARX."""
+    print("\nResumen del objeto fit:")
+    print("Claves:", list(fit.keys()))
+    print("p:", fit["p"])
+    print("Columnas X:", list(fit["X_columns"]))
+    print("\nMatriz Sigma de residuos:")
+    print(pd.DataFrame(fit["Sigma"], index=ENDOG, columns=ENDOG).to_string())
+    print("\nMatrices A de rezagos endógenos:")
+    for i, matrix in enumerate(fit["A"], start=1):
+        print(f"A{i}:")
+        print(pd.DataFrame(matrix, index=ENDOG, columns=ENDOG).to_string())
+    print("\nMatriz B de exógenas:")
+    print(pd.DataFrame(fit["B"], index=ENDOG, columns=EXOG).to_string())
 
 
 def main():
     configure_runtime()
-    df_all = slice_window(load_and_prepare(INPUT_FILE), "full")
-
-    p_candidates = [1, 3, 6, 12]
-    p, fit, eigvals, diag = choose_p_by_whiteness(df_all, p_candidates, lb_lags=12, alpha=0.05)
+    df_all = slice_window(load_and_prepare(VARX_MODEL_FILE), "full")
+    lb_lags = 12
+    p_candidates = [12]
+    p, fit, eigvals, diag = choose_p_by_whiteness(df_all, p_candidates, lb_lags, alpha=0.05)
 
     stable = bool(np.all(np.abs(eigvals) < 1))
     max_eig = float(np.max(np.abs(eigvals)))
+    diagnostics = varx_diagnostics(fit, lb_lags=lb_lags)
+    coefficients = coefficient_table(fit, cov_type="HC3")
+    output_path = Path(OUT_DIR) / "resultados_varx_total.xlsx"
+
+    with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
+        coefficients.to_excel(writer, sheet_name="Coeficientes_HC3", index=False)
+        diagnostics["stability"].to_excel(writer, sheet_name="Estabilidad", index=False)
+        diagnostics["stability_roots"].to_excel(writer, sheet_name="Raices_AR", index=False)
+        diagnostics["ljung_box"].to_excel(writer, sheet_name="Ljung_Box", index=False)
+        diagnostics["jarque_bera"].to_excel(writer, sheet_name="Jarque_Bera", index=False)
+        diagnostics["heteroskedasticity"].to_excel(
+            writer,
+            sheet_name="Heterocedasticidad",
+            index=False,
+        )
+        pd.DataFrame(fit["Sigma"], index=ENDOG, columns=ENDOG).to_excel(
+            writer,
+            sheet_name="Sigma_residuos",
+        )
 
     print("=== VARX TOTAL ===")
     print(f"Ventana: {SAMPLE_START} a {SAMPLE_END}")
     print(f"p(elegido) = {p}")
     print(f"Estable (|eig|<1): {stable} | max|eig|={max_eig:.4f}")
-    print("Ljung-Box (lag 12):")
+    print(f"Ljung-Box (lag {lb_lags}):")
     print(diag.to_string(index=False))
     print("ENDOG:", ENDOG)
     print("EXOG:", EXOG)
+    print("\nJarque-Bera (normalidad de residuos):")
+    print(diagnostics["jarque_bera"].to_string(index=False))
+    print("\nHeterocedasticidad (Breusch-Pagan / White):")
+    print(diagnostics["heteroskedasticity"].to_string(index=False))
+    print("\nCoeficientes principales con errores robustos HC3:")
+    key_vars = ["D_Covid", "D_Intervencion_Gob", "D_ln_PBI_Desestacionalizado", "D_Tasa_Ref"]
+    key_rows = coefficients[coefficients["variable"].isin(key_vars)]
+    print(key_rows.to_string(index=False))
+    print_fit_summary(fit)
+    print(f"\nResultados guardados en: {output_path}")
 
 
 if __name__ == "__main__":
