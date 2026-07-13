@@ -14,13 +14,17 @@ from src.config.settings import ENDOG, EXOG
 from src.data.loader import make_lagged_matrix
 
 
-def estimate_varx_ols(df: pd.DataFrame, p: int):
-    Y, X = make_lagged_matrix(df, ENDOG, EXOG, p)
+def estimate_varx_ols(df: pd.DataFrame, p: int, endog_cols=None, exog_cols=None):
+    if endog_cols is None:
+        endog_cols = ENDOG
+    if exog_cols is None:
+        exog_cols = EXOG
+    Y, X = make_lagged_matrix(df, endog_cols, exog_cols, p)
 
     results = {}
     residuals = []
 
-    for ycol in ENDOG:
+    for ycol in endog_cols:
         model = sm.OLS(Y[ycol].values, X.values).fit()
         results[ycol] = model
         residuals.append(model.resid)
@@ -28,22 +32,22 @@ def estimate_varx_ols(df: pd.DataFrame, p: int):
     resid = np.column_stack(residuals)
     Sigma = np.cov(resid.T, bias=False)
 
-    n = len(ENDOG)
+    n = len(endog_cols)
     A = []
     for k in range(p):
         Ak = np.zeros((n, n))
-        for eq_i, ycol in enumerate(ENDOG):
+        for eq_i, ycol in enumerate(endog_cols):
             params = results[ycol].params
             start = 1 + k * n
             stop = start + n
             Ak[eq_i, :] = params[start:stop]
         A.append(Ak)
 
-    B = np.zeros((n, len(EXOG)))
-    for eq_i, ycol in enumerate(ENDOG):
+    B = np.zeros((n, len(exog_cols)))
+    for eq_i, ycol in enumerate(endog_cols):
         params = results[ycol].params
         exog_start = 1 + n * p
-        B[eq_i, :] = params[exog_start:exog_start + len(EXOG)]
+        B[eq_i, :] = params[exog_start:exog_start + len(exog_cols)]
 
     return {
         "p": p, "results": results, "Sigma": Sigma, "A": A, "B": B,
@@ -88,9 +92,11 @@ def stability_roots(A_list):
     return np.linalg.eigvals(C)
 
 
-def residual_diagnostics(resid: np.ndarray, lags=12):
+def residual_diagnostics(resid: np.ndarray, endog_cols=None, lags=12):
+    if endog_cols is None:
+        endog_cols = ENDOG
     out = []
-    for i, col in enumerate(ENDOG):
+    for i, col in enumerate(endog_cols):
         r = resid[:, i]
         lb = acorr_ljungbox(r, lags=[lags], return_df=True)
         out.append({
@@ -101,10 +107,12 @@ def residual_diagnostics(resid: np.ndarray, lags=12):
     return pd.DataFrame(out)
 
 
-def normality_diagnostics(fit: dict) -> pd.DataFrame:
+def normality_diagnostics(fit: dict, endog_cols=None) -> pd.DataFrame:
     """Jarque-Bera por ecuación para normalidad de residuos."""
+    if endog_cols is None:
+        endog_cols = ENDOG
     rows = []
-    for ycol in ENDOG:
+    for ycol in endog_cols:
         jb_stat, jb_pvalue, skew, kurtosis = jarque_bera(fit["results"][ycol].resid)
         rows.append({
             "eq": ycol,
@@ -116,11 +124,13 @@ def normality_diagnostics(fit: dict) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def heteroskedasticity_diagnostics(fit: dict) -> pd.DataFrame:
+def heteroskedasticity_diagnostics(fit: dict, endog_cols=None) -> pd.DataFrame:
     """Breusch-Pagan y White por ecuación para heterocedasticidad."""
+    if endog_cols is None:
+        endog_cols = ENDOG
     rows = []
     x = fit["X"]
-    for ycol in ENDOG:
+    for ycol in endog_cols:
         resid = fit["results"][ycol].resid
         bp_stat, bp_pvalue, bp_f_stat, bp_f_pvalue = het_breuschpagan(resid, x)
         white_stat, white_pvalue, white_f_stat, white_f_pvalue = het_white(resid, x)
@@ -155,24 +165,28 @@ def stability_diagnostics(fit: dict) -> tuple[pd.DataFrame, np.ndarray]:
     return summary, roots
 
 
-def varx_diagnostics(fit: dict, lb_lags: int = 12) -> dict[str, pd.DataFrame]:
+def varx_diagnostics(fit: dict, endog_cols=None, lb_lags: int = 12) -> dict[str, pd.DataFrame]:
     """Batería estándar de diagnósticos para el VARX estimado."""
-    resid = np.column_stack([fit["results"][y].resid for y in ENDOG])
+    if endog_cols is None:
+        endog_cols = ENDOG
+    resid = np.column_stack([fit["results"][y].resid for y in endog_cols])
     stability_summary, stability_roots_df = stability_diagnostics(fit)
     return {
         "stability": stability_summary,
         "stability_roots": stability_roots_df,
-        "ljung_box": residual_diagnostics(resid, lags=lb_lags),
-        "jarque_bera": normality_diagnostics(fit),
-        "heteroskedasticity": heteroskedasticity_diagnostics(fit),
+        "ljung_box": residual_diagnostics(resid, endog_cols=endog_cols, lags=lb_lags),
+        "jarque_bera": normality_diagnostics(fit, endog_cols=endog_cols),
+        "heteroskedasticity": heteroskedasticity_diagnostics(fit, endog_cols=endog_cols),
     }
 
 
-def coefficient_table(fit: dict, cov_type: str = "HC3") -> pd.DataFrame:
+def coefficient_table(fit: dict, endog_cols=None, cov_type: str = "HC3") -> pd.DataFrame:
     """Coeficientes por ecuación con errores estándar robustos."""
+    if endog_cols is None:
+        endog_cols = ENDOG
     rows = []
     x_names = list(fit["X_columns"])
-    for ycol in ENDOG:
+    for ycol in endog_cols:
         result = fit["results"][ycol]
         robust = result.get_robustcov_results(cov_type=cov_type)
         for i, name in enumerate(x_names):
