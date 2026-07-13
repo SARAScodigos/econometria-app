@@ -1,3 +1,8 @@
+# Objetivos del repositorio y modelos VARX
+1. Objetivo general (OBG): Analizar la relación dinámica entre el volumen de préstamos y la tasa de morosidad en las Cajas Municipales de Ahorro y Crédito del Perú ante el shock del COVID-19, en un escenario sin medidas de alivio o rescate gubernamental.
+2. Objetivo específico 1: Estimar la evolución temporal entre el volumen de préstamos y la tasa de morosidad en las Cajas Municipales de Ahorro y Crédito del Perú ante el shock del COVID-19, en un escenario sin medidas de alivio o rescate por parte del gobierno.
+3. Objetivo específico 2: Identificar la respuesta diferenciada ante el shock del COVID-19 según el tipo de crédito: consumo, hipotecarios, comerciales y microcréditos de las CMAC.
+
 # Limpieza y preparacion de datos.
 ## La estacionalidad *(Prueba F de dummies regresion OLS)*
 
@@ -38,14 +43,14 @@ Explorar los niveles correspondientes para las endógenas [cointegracion.py](src
 
 **Variables Definidas** $\rightarrow$ **Elección Provisional de Rezagos** $\rightarrow$ **Construcción de Regresores** $\rightarrow$ **Estimación de Coeficientes** $\rightarrow$ **Comparación (AIC/BIC)**
 
-* tras aplicar [lag_selecction.py](src/model/lag_selection.py) se ecnontró en la ventana *full* un valor de BIC =1 y AIC = 1 como rezagos optimos (solo mes)
+* tras aplicar [lag_selecction.py](src/model/lag_selection.py) se ecnontró en la ventana *full* un valor de BIC =1 y AIC = 1 como rezagos optimos (solo mes) en promedio, pero con el calculo de rezagos a nivel de sistema, cruzando covarianzas fueron:
 |BIC mean|AIC mean|BIC sistema|AIC sistema| 
 |-|---|-|-|
 |1|1|1|12|
 
-* Ahora estimar el VARX con [varx.py](src/model/varx.py)
+* Ahora estimar el VARX y obtener sus indicadores usar [varx.py](src/model/varx.py)
 $$\text{Selección de rezago} \rightarrow \text{Estimación final} \rightarrow \text{Diagnóstico (Estabilidad, autocorrelación, normalidad, heterecedasticidad)} \rightarrow \text{Validación (estimacion fue correcta?)} \rightarrow \text{Contrafactual (probar escenarios)}$$
-
+* Para los valores en niveles de los tres escenarios (real, estimado y estimado sin ayuda) correr: [general_no_ayuda.py](src/scenarios/general_no_ayuda.py)
 ## Autocorrelación test de Ljung-Box
 Se aplicó la prueba Ljung-Box hasta 12 rezagos con *p=1*
             eq    lb_stat    lb_pvalue
@@ -79,6 +84,9 @@ La prueba de heterocedasticidad sugiere que la varianza de los residuos no es co
 
 ## Coefientes y significancia
 * HC3 como existía variabilidad en los coeficientes fue necesario aplicar esta corrreccion dando que ninguna variable fuese significativa al momento de predecir 
+
+## Validacion de predicciones del modelo
+* Ver los resultados de [Validation.py](src/scenarios/validation.py) en los outputs [validacion resultados](outputs/resultados_validacion.xlsx). El modelo predijo correctamente segun las metricas de MAE MAPE para las series en niveles. Se emplea dos ventanas de validacion, una pre covid y otra tomando el covid y lo siguiente. 
 
 
 
