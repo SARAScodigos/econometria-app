@@ -85,6 +85,9 @@ La prueba de heterocedasticidad sugiere que la varianza de los residuos no es co
 ## Coefientes y significancia
 * HC3 como existía variabilidad en los coeficientes fue necesario aplicar esta corrreccion dando que ninguna variable fuese significativa al momento de predecir 
 
+## Validacion de predicciones del modelo
+* Ver los resultados de [Validation.py](src/scenarios/validation.py) en los outputs [validacion resultados](outputs/resultados_validacion.xlsx). El modelo predijo correctamente segun las metricas de MAE MAPE para las series en niveles. Se emplea dos ventanas de validacion, una pre covid y otra tomando el covid y lo siguiente. 
+
 
 
 
