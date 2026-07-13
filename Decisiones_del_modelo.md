@@ -45,7 +45,7 @@ Explorar los niveles correspondientes para las endógenas [cointegracion.py](src
 
 * tras aplicar [lag_selecction.py](src/model/lag_selection.py) se ecnontró en la ventana *full* un valor de BIC =1 y AIC = 1 como rezagos optimos (solo mes) en promedio, pero con el calculo de rezagos a nivel de sistema, cruzando covarianzas fueron:
 |BIC mean|AIC mean|BIC sistema|AIC sistema| 
-|-|---|-|-|
+|---|---|---|---|
 |1|1|1|12|
 
 * Ahora estimar el VARX y obtener sus indicadores usar [varx.py](src/model/varx.py)

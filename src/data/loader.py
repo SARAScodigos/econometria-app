@@ -12,7 +12,7 @@ if str(_ROOT) not in sys.path:
 from src.config.settings import DATE_COL, ENDOG, EXOG, WINDOWS
 
 
-def load_and_prepare(path: str) -> pd.DataFrame:
+def load_and_prepare(path: str, needed=None) -> pd.DataFrame:
     if not os.path.exists(path):
         raise FileNotFoundError(
             f"No encuentro '{path}'. Colocalo junto al script o ajusta MODEL_VARX_FILE."
@@ -25,7 +25,8 @@ def load_and_prepare(path: str) -> pd.DataFrame:
     df[DATE_COL] = pd.to_datetime(df[DATE_COL])
     df = df.set_index(DATE_COL).sort_index()
 
-    needed = ENDOG + EXOG
+    if needed is None:
+        needed = ENDOG + EXOG
     missing = [c for c in needed if c not in df.columns]
     if missing:
         raise ValueError(f"Faltan columnas requeridas: {missing}")

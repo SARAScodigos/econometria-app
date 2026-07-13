@@ -30,6 +30,26 @@ VARX_MODEL_FILE=os.path.join(BASE_DIR, "data", "datos_varx.xlsx")
 ENDOG = ["D_ln_Vol_total", "D_Mora_total"]
 ENDOG_LEVELS = ["Vol_total", "Mora_total"]
 
+# Variables por tipo de crédito (sectoriales)
+SECTOR_CONFIG = {
+    "comerciales": {
+        "ENDOG": ["D_ln_Vol_comerciales", "D_Mora_comerciales"],
+        "ENDOG_LEVELS": ["Vol_comerciales", "Mora_comerciales"],
+    },
+    "consumo": {
+        "ENDOG": ["D_ln_Vol_consumo", "D_Mora_consumo"],
+        "ENDOG_LEVELS": ["Vol_consumo", "Mora_consumo"],
+    },
+    "hipotecarios": {
+        "ENDOG": ["D_ln_Vol_hipotecarios", "D_Mora_hipotecarios"],
+        "ENDOG_LEVELS": ["Vol_hipotecarios", "Mora_hipotecarios"],
+    },
+    "microcreditos": {
+        "ENDOG": ["D_ln_Vol_microcreditos", "D_Mora_microcreditos"],
+        "ENDOG_LEVELS": ["Vol_microcreditos", "Mora_microcreditos"],
+    }
+}
+
 # Exogenas
 EXOG = ["D_ln_PBI_Desestacionalizado", "D_Tasa_Ref", "D_Covid", "D_Intervencion_Gob"]
 

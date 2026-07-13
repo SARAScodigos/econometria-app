@@ -27,7 +27,7 @@ _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from src.config.settings import BASE_DIR, DATE_COL, ENDOG, ENDOG_LEVELS, INPUT_FILE, OUT_DIR, COINTEGRATION_FILE
+from src.config.settings import BASE_DIR, DATE_COL, ENDOG, ENDOG_LEVELS, INPUT_FILE, OUT_DIR, COINTEGRATION_FILE, SECTOR_CONFIG
 
 ARCHIVO_DATOS=COINTEGRATION_FILE
 ARCHIVO_RESULTADOS = Path(OUT_DIR) / "resultados_johansen.xlsx"
@@ -230,12 +230,17 @@ def parse_args() -> argparse.Namespace:
         help="Ruta del Excel de salida.",
     )
     parser.add_argument(
+        "--sector",
+        default=None,
+        help="Nombre del sector (comerciales, consumo, hipotecarios, microcreditos) definido en SECTOR_CONFIG."
+    )
+    parser.add_argument(
         "--vars",
         nargs="+",
         default=None,
         help=(
             "Variables endógenas en niveles para Johansen. "
-            "Si no se indica, se usan ENDOG_LEVELS de settings.py."
+            "Si no se indica, se usan ENDOG_LEVELS de settings.py o el sector."
         ),
     )
     parser.add_argument(
@@ -270,12 +275,18 @@ def main() -> None:
         df[DATE_COL] = pd.to_datetime(df[DATE_COL], errors="coerce")
         df = df.sort_values(DATE_COL)
 
-    if args.vars is None:
-        df, variables_johansen = preparar_variables_johansen(df, ENDOG_LEVELS, ENDOG)
-        origen_variables = "ENDOG_LEVELS de settings.py"
-    else:
+    if args.vars is not None:
         variables_johansen = args.vars
         origen_variables = "argumento --vars"
+    elif args.sector is not None:
+        if args.sector not in SECTOR_CONFIG:
+            raise ValueError(f"Sector '{args.sector}' no definido en SECTOR_CONFIG.")
+        config = SECTOR_CONFIG[args.sector]
+        df, variables_johansen = preparar_variables_johansen(df, config["ENDOG_LEVELS"], config["ENDOG"])
+        origen_variables = f"SECTOR_CONFIG[{args.sector}] de settings.py"
+    else:
+        df, variables_johansen = preparar_variables_johansen(df, ENDOG_LEVELS, ENDOG)
+        origen_variables = "ENDOG_LEVELS de settings.py"
 
     resultado = johansen_test(
         df,
